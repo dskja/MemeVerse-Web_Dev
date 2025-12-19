@@ -742,7 +742,14 @@ export async function registerRoutes(
   app.get("/api/creator-of-month", async (_req, res) => {
     try {
       const creator = await storage.getCreatorOfMonth();
-      res.json(creator);
+      if (!creator) {
+        return res.json(null);
+      }
+      const userData = await storage.getUser(creator.userId);
+      res.json({
+        ...creator,
+        username: userData?.username || creator.userId,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch creator of month" });
     }

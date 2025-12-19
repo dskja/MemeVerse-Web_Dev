@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Search, X, UserPlus, UserMinus } from "lucide-react";
+import { Search, X, UserPlus, BadgeCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import type { UserProfile } from "@shared/schema";
+import { FramedAvatar } from "@/components/framed-avatar";
+import type { UserProfile, ProfileFrame } from "@shared/schema";
 
 export function UserSearch() {
   const [open, setOpen] = useState(false);
@@ -77,20 +77,24 @@ export function UserSearch() {
                     data-testid={`search-result-${profile.userId}`}
                   >
                     <Link href={`/profile/${profile.userId}`} onClick={() => setOpen(false)}>
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={profile.avatarUrl || undefined} />
-                        <AvatarFallback>
-                          {(profile.displayName || "U").charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <FramedAvatar
+                        src={profile.avatarUrl}
+                        fallback={(profile.displayName || "U").charAt(0)}
+                        size="sm"
+                        frame={(profile.profileFrame as ProfileFrame) || "default"}
+                        profileColor={profile.profileColor || undefined}
+                      />
                     </Link>
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/profile/${profile.userId}`}
                         onClick={() => setOpen(false)}
-                        className="font-medium truncate block hover:underline"
+                        className="font-medium truncate flex items-center gap-1 hover:underline"
                       >
                         {profile.displayName || "User"}
+                        {profile.isVerified && (
+                          <BadgeCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                        )}
                       </Link>
                       <p className="text-xs text-muted-foreground truncate">{profile.bio || "No bio"}</p>
                     </div>
