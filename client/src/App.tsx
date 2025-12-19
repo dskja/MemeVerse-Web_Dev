@@ -7,6 +7,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import UploadPage from "@/pages/upload";
+import Leaderboard from "@/pages/leaderboard";
+import MemeDetail from "@/pages/meme-detail";
+import Contests from "@/pages/contests";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +19,9 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/profile/:userId" component={Profile} />
       <Route path="/upload" component={UploadPage} />
+      <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/meme/:id" component={MemeDetail} />
+      <Route path="/contests" component={Contests} />
       <Route component={NotFound} />
     </Switch>
   );

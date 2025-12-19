@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Menu, X, Instagram, User, Upload, LogOut, LogIn } from "lucide-react";
+import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -11,12 +11,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
+import { UserSearch } from "./user-search";
+import { NotificationsDropdown } from "./notifications-dropdown";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
 
 const navLinks = [
   { name: "About", href: "#about" },
   { name: "Memes", href: "#memes" },
+  { name: "Leaderboard", href: "/leaderboard" },
+  { name: "Contests", href: "/contests" },
 ];
 
 export function Navigation() {
@@ -70,14 +74,22 @@ export function Navigation() {
 
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <Button
-                key={link.name}
-                variant="ghost"
-                onClick={() => scrollToSection(link.href)}
-                data-testid={`link-nav-${link.name.toLowerCase()}`}
-              >
-                {link.name}
-              </Button>
+              link.href.startsWith("/") ? (
+                <Link key={link.name} href={link.href}>
+                  <Button variant="ghost" data-testid={`link-nav-${link.name.toLowerCase()}`}>
+                    {link.name}
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  key={link.name}
+                  variant="ghost"
+                  onClick={() => scrollToSection(link.href)}
+                  data-testid={`link-nav-${link.name.toLowerCase()}`}
+                >
+                  {link.name}
+                </Button>
+              )
             ))}
             {user && (
               <Link href="/upload">
@@ -89,6 +101,8 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-2">
+            <UserSearch />
+            {user && <NotificationsDropdown />}
             <ThemeToggle />
             
             {isLoading ? (
