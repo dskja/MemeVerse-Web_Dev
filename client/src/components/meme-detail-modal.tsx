@@ -100,22 +100,24 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !isNaN(videoRef.current.currentTime)) {
       setCurrentTime(videoRef.current.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !isNaN(videoRef.current.duration)) {
       setDuration(videoRef.current.duration);
     }
   };
 
   const handleSeek = (value: number[]) => {
-    if (videoRef.current && duration) {
+    if (videoRef.current && duration && !isNaN(duration) && !isNaN(value[0])) {
       const newTime = (value[0] / 100) * duration;
-      videoRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
+      if (!isNaN(newTime)) {
+        videoRef.current.currentTime = newTime;
+        setCurrentTime(newTime);
+      }
     }
   };
 
@@ -136,6 +138,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   };
 
   const formatTime = (time: number) => {
+    if (!isFinite(time) || isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -144,7 +147,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   if (!meme) return null;
 
   const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i) || meme.imageUrl?.includes("video");
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progress = duration > 0 && !isNaN(duration) && !isNaN(currentTime) ? Math.min((currentTime / duration) * 100, 100) : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
