@@ -99,6 +99,9 @@ export const translations = {
       levelGuide: "Level Guide",
       levelDescription: "Earn XP by uploading memes, receiving likes, and participating in contests",
       xpRequired: "XP Required",
+      allTime: "All Time",
+      thisMonth: "This Month",
+      thisWeek: "This Week",
     },
     notifications: {
       title: "Notifications",
@@ -329,6 +332,9 @@ export const translations = {
       levelGuide: "Level-Guide",
       levelDescription: "Sammle XP durch Meme-Uploads, erhaltene Likes und Wettbewerbs-Teilnahmen",
       xpRequired: "XP benötigt",
+      allTime: "Gesamt",
+      thisMonth: "Diesen Monat",
+      thisWeek: "Diese Woche",
     },
     notifications: {
       title: "Benachrichtigungen",

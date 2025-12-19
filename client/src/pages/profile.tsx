@@ -11,11 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   Heart, UserPlus, UserMinus, Image, Trash2, Star, Flame, Medal, Crown, 
-  Award, Play, Upload, MessageCircle, Trophy, Calendar, Users, Settings, 
-  ExternalLink, Share2, Zap, TrendingUp, Target
+  Award, Play, Upload, MessageCircle, Users, Settings, 
+  Zap, TrendingUp, Grid3X3, Trophy, Share2, MoreHorizontal
 } from "lucide-react";
+import { SiTwitter, SiInstagram, SiTiktok, SiYoutube, SiDiscord } from "react-icons/si";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -43,6 +45,14 @@ const levelConfig: Record<string, { icon: typeof Star; color: string; bgGradient
   meme_lord: { icon: Crown, color: "text-yellow-500", bgGradient: "from-yellow-400 to-yellow-600", label: "Meme Lord", minXp: 2000, maxXp: 10000 },
 };
 
+const socialIcons: Record<string, typeof SiTwitter> = {
+  twitter: SiTwitter,
+  instagram: SiInstagram,
+  tiktok: SiTiktok,
+  youtube: SiYoutube,
+  discord: SiDiscord,
+};
+
 function FollowersSheet({ userId, type, count }: { userId: string; type: "followers" | "following"; count: number }) {
   const { data: list = [], isLoading } = useQuery<FollowerWithProfile[]>({
     queryKey: ["/api/profile", userId, type],
@@ -51,25 +61,28 @@ function FollowersSheet({ userId, type, count }: { userId: string; type: "follow
       return res.json();
     },
   });
+  const { t } = useLanguage();
 
   return (
     <Sheet>
       <SheetTrigger asChild>
         <button className="text-center active:scale-95 transition-transform" data-testid={`button-view-${type}`}>
-          <p className="text-2xl font-bold">{count}</p>
-          <p className="text-sm text-muted-foreground capitalize">{type}</p>
+          <p className="text-xl font-bold">{count}</p>
+          <p className="text-xs text-muted-foreground">
+            {type === "followers" ? t.profile?.followers || "Followers" : t.profile?.following || "Following"}
+          </p>
         </button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-[70vh] rounded-t-3xl">
         <SheetHeader>
-          <SheetTitle className="capitalize">{type}</SheetTitle>
+          <SheetTitle className="capitalize">{type === "followers" ? t.profile?.followers || "Followers" : t.profile?.following || "Following"}</SheetTitle>
         </SheetHeader>
-        <div className="mt-4 space-y-3 overflow-y-auto max-h-[calc(70vh-80px)]">
+        <div className="mt-4 space-y-2 overflow-y-auto max-h-[calc(70vh-80px)]">
           {isLoading ? (
             Array(3).fill(0).map((_, i) => (
               <div key={i} className="flex items-center gap-3 p-3">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
+                <Skeleton className="h-11 w-11 rounded-full" />
+                <div className="space-y-1.5">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-3 w-16" />
                 </div>
@@ -77,7 +90,7 @@ function FollowersSheet({ userId, type, count }: { userId: string; type: "follow
             ))
           ) : list.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              No {type} yet
+              {type === "followers" ? "No followers yet" : "Not following anyone yet"}
             </p>
           ) : (
             list.map((item) => {
@@ -86,15 +99,15 @@ function FollowersSheet({ userId, type, count }: { userId: string; type: "follow
               return (
                 <Link key={item.id} href={`/profile/${targetUserId}`}>
                   <div className="flex items-center gap-3 p-3 rounded-xl hover-elevate active-elevate-2 cursor-pointer">
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-11 w-11">
                       <AvatarImage src={profile?.avatarUrl || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {(profile?.displayName || "U").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{profile?.displayName || "User"}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <p className="font-semibold text-sm truncate">{profile?.displayName || "User"}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Zap className="h-3 w-3" />
                         {profile?.xp || 0} XP
                       </p>
@@ -193,12 +206,17 @@ export default function Profile() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="pt-20 pb-16 px-4">
-          <div className="max-w-lg mx-auto space-y-6">
-            <div className="flex flex-col items-center gap-4">
-              <Skeleton className="h-28 w-28 rounded-full" />
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-24" />
+        <main className="pt-16 pb-16">
+          <div className="max-w-lg mx-auto px-4 space-y-4">
+            <div className="bg-card rounded-2xl border p-6">
+              <div className="flex items-start gap-4">
+                <Skeleton className="h-20 w-20 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              </div>
             </div>
           </div>
         </main>
@@ -213,10 +231,11 @@ export default function Profile() {
         <Navigation />
         <main className="pt-24 pb-16 px-4">
           <div className="max-w-lg mx-auto text-center">
-            <h1 className="text-2xl font-bold mb-4">Profile</h1>
-            <p className="text-muted-foreground mb-6">Please login to view your profile</p>
-            <Button onClick={() => window.location.href = "/api/login"} className="h-12 px-8 rounded-full">
-              Login
+            <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h1 className="text-2xl font-bold mb-2">{t.profile?.title || "Profile"}</h1>
+            <p className="text-muted-foreground mb-6">{t.profile?.loginPrompt || "Please login to view your profile"}</p>
+            <Button onClick={() => window.location.href = "/api/login"} className="h-11 px-8 rounded-full">
+              {t.nav.login}
             </Button>
           </div>
         </main>
@@ -227,6 +246,7 @@ export default function Profile() {
 
   const displayName = profile?.displayName || user?.firstName || "User";
   const avatarUrl = profile?.avatarUrl || user?.profileImageUrl;
+  const totalLikes = overview?.totalLikes || 0;
 
   const xpSourceLabels: Record<string, { label: string; icon: typeof Upload; color: string }> = {
     upload: { label: t.xp.uploadMeme, icon: Upload, color: "text-green-500" },
@@ -236,126 +256,176 @@ export default function Profile() {
     follow_received: { label: t.xp.gainFollower, icon: Users, color: "text-purple-500" },
   };
 
+  const nextLevel = level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : level === "meme_master" ? "meme_lord" : null;
+  const nextConfig = nextLevel ? levelConfig[nextLevel] : null;
+  const currentXp = profile?.xp || 0;
+  const xpProgress = nextConfig ? Math.min(100, ((currentXp - config.minXp) / (nextConfig.minXp - config.minXp)) * 100) : 100;
+  const xpToNext = nextConfig ? nextConfig.minXp - currentXp : 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="pt-20 pb-24">
-        <div className="max-w-lg mx-auto px-4 space-y-6">
+      <main className="pt-16 pb-24">
+        <div className="max-w-lg mx-auto px-4 space-y-4">
           
-          <div className="bg-card rounded-2xl border shadow-sm p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="relative mb-4">
-                <Avatar className="h-24 w-24 ring-4 ring-primary/20 ring-offset-4 ring-offset-background">
+          {/* Profile Header Card */}
+          <div className="bg-card rounded-2xl border overflow-hidden">
+            {/* Gradient Banner */}
+            <div className={`h-20 bg-gradient-to-r ${config.bgGradient}`} />
+            
+            <div className="px-5 pb-5">
+              {/* Avatar overlapping banner */}
+              <div className="flex items-end gap-4 -mt-10 mb-4">
+                <Avatar className="h-20 w-20 ring-4 ring-card">
                   <AvatarImage src={avatarUrl || undefined} alt={displayName} />
-                  <AvatarFallback className="text-3xl bg-gradient-to-br from-primary/20 to-primary/5">
+                  <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-primary/5">
                     {displayName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br ${config.bgGradient} flex items-center justify-center shadow-lg`}>
-                  <LevelIcon className="h-4 w-4 text-white" />
+                
+                <div className="flex-1 flex justify-end gap-2 pb-1">
+                  {isOwnProfile ? (
+                    <Link href="/settings">
+                      <Button variant="outline" size="sm" className="rounded-full gap-1.5" data-testid="button-edit-profile">
+                        <Settings className="h-4 w-4" />
+                        {t.settings?.title || "Settings"}
+                      </Button>
+                    </Link>
+                  ) : user ? (
+                    followStatus?.isFollowing ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full gap-1.5"
+                        onClick={() => unfollowMutation.mutate()}
+                        disabled={unfollowMutation.isPending}
+                        data-testid="button-unfollow"
+                      >
+                        <UserMinus className="h-4 w-4" />
+                        {t.profile?.unfollow || "Unfollow"}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="rounded-full gap-1.5"
+                        onClick={() => followMutation.mutate()}
+                        disabled={followMutation.isPending}
+                        data-testid="button-follow"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        {t.nav.follow}
+                      </Button>
+                    )
+                  ) : null}
                 </div>
               </div>
               
-              <h1 className="text-2xl font-bold">{displayName}</h1>
-              
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className={`gap-1 ${config.color}`}>
-                  <LevelIcon className="h-3 w-3" />
-                  {config.label}
-                </Badge>
-                <Badge variant="secondary" className="gap-1">
-                  <Zap className="h-3 w-3" />
-                  {profile?.xp || 0} XP
-                </Badge>
+              {/* Name and Level */}
+              <div className="mb-4">
+                <h1 className="text-xl font-bold">{displayName}</h1>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <Badge variant="outline" className={`gap-1 ${config.color}`}>
+                    <LevelIcon className="h-3 w-3" />
+                    {config.label}
+                  </Badge>
+                  <Badge variant="secondary" className="gap-1">
+                    <Zap className="h-3 w-3" />
+                    {currentXp} XP
+                  </Badge>
+                </div>
+                {profile?.bio && (
+                  <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
+                )}
               </div>
-              
-              {profile?.bio && (
-                <p className="mt-4 text-muted-foreground text-sm max-w-xs">{profile.bio}</p>
+
+              {/* Social Links */}
+              {overview?.socialLinks && overview.socialLinks.length > 0 && (
+                <div className="flex gap-2 mb-4">
+                  {overview.socialLinks.map((link) => {
+                    const Icon = socialIcons[link.platform] || Share2;
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-muted hover-elevate"
+                        data-testid={`social-link-${link.platform}`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
               )}
               
-              <div className="flex gap-3 mt-5">
-                {isOwnProfile ? (
-                  <Link href="/settings">
-                    <Button
-                      className="rounded-full h-11 px-6 gap-2"
-                      data-testid="button-edit-profile"
-                    >
-                      <Settings className="h-4 w-4" />
-                      {t.settings?.title || "Settings"}
-                    </Button>
-                  </Link>
-                ) : user ? (
-                  followStatus?.isFollowing ? (
-                    <Button
-                      variant="outline"
-                      className="rounded-full h-11 px-6 gap-2"
-                      onClick={() => unfollowMutation.mutate()}
-                      disabled={unfollowMutation.isPending}
-                      data-testid="button-unfollow"
-                    >
-                      <UserMinus className="h-4 w-4" />
-                      Unfollow
-                    </Button>
-                  ) : (
-                    <Button
-                      className="rounded-full h-11 px-6 gap-2"
-                      onClick={() => followMutation.mutate()}
-                      disabled={followMutation.isPending}
-                      data-testid="button-follow"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Follow
-                    </Button>
-                  )
-                ) : null}
+              {/* Stats Row */}
+              <div className="flex justify-around py-4 border-t border-b">
+                <div className="text-center">
+                  <p className="text-xl font-bold">{memesList.length}</p>
+                  <p className="text-xs text-muted-foreground">{t.memes?.title || "Memes"}</p>
+                </div>
+                <FollowersSheet userId={userId} type="followers" count={overview?.followerCount || 0} />
+                <FollowersSheet userId={userId} type="following" count={overview?.followingCount || 0} />
+                <div className="text-center">
+                  <p className="text-xl font-bold">{totalLikes}</p>
+                  <p className="text-xs text-muted-foreground">{t.memes?.likes || "Likes"}</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex justify-around mt-6 pt-6 border-t">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{memesList.length}</p>
-                <p className="text-sm text-muted-foreground">Memes</p>
-              </div>
-              <FollowersSheet userId={userId} type="followers" count={overview?.followerCount || 0} />
-              <FollowersSheet userId={userId} type="following" count={overview?.followingCount || 0} />
+
+              {/* XP Progress */}
+              {nextConfig && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">{t.xp.progressTo} {nextConfig.label}</span>
+                    <span className="font-medium text-primary">{xpToNext} XP {t.xp.xpNeeded}</span>
+                  </div>
+                  <Progress value={xpProgress} className="h-1.5" />
+                </div>
+              )}
+              {level === "meme_lord" && (
+                <div className="mt-4 text-center">
+                  <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black gap-1">
+                    <Crown className="h-3 w-3" />
+                    {t.xp.maxLevel}
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Content Tabs */}
           <Tabs defaultValue="memes" className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-12 rounded-xl">
-              <TabsTrigger value="memes" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
-                <Image className="h-4 w-4" />
-                <span className="hidden sm:inline">Memes</span>
+            <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-muted/50">
+              <TabsTrigger value="memes" className="gap-1.5 rounded-lg text-xs">
+                <Grid3X3 className="h-4 w-4" />
+                {t.memes?.title || "Memes"}
               </TabsTrigger>
-              <TabsTrigger value="badges" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
+              <TabsTrigger value="badges" className="gap-1.5 rounded-lg text-xs">
                 <Award className="h-4 w-4" />
-                <span className="hidden sm:inline">Badges</span>
+                {t.profile?.badges || "Badges"}
               </TabsTrigger>
-              <TabsTrigger value="xp" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
-                <Zap className="h-4 w-4" />
-                <span className="hidden sm:inline">XP</span>
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
+              <TabsTrigger value="activity" className="gap-1.5 rounded-lg text-xs">
                 <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Activity</span>
+                {t.profile?.activity || "Activity"}
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="memes" className="mt-4">
+            <TabsContent value="memes" className="mt-3">
               {memesLoading ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-3 gap-0.5">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Skeleton key={i} className="aspect-square rounded-md" />
+                    <Skeleton key={i} className="aspect-square" />
                   ))}
                 </div>
               ) : memesList.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-3 gap-0.5">
                   {memesList.map((meme) => {
                     const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i);
                     return (
                       <div 
                         key={meme.id}
-                        className="relative aspect-square rounded-md overflow-hidden cursor-pointer group"
+                        className="relative aspect-square overflow-hidden cursor-pointer group bg-muted"
                         onClick={() => setSelectedMeme(meme)}
                         data-testid={`card-user-meme-${meme.id}`}
                       >
@@ -377,7 +447,7 @@ export default function Profile() {
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteMutation.mutate(meme.id);
@@ -392,148 +462,120 @@ export default function Profile() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-card rounded-2xl border">
-                  <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {isOwnProfile ? "You haven't uploaded any memes yet" : "No memes uploaded yet"}
-                  </p>
-                  {isOwnProfile && (
-                    <Link href="/upload">
-                      <Button className="mt-4 rounded-full h-11 px-6 gap-2">
-                        <Upload className="h-4 w-4" />
-                        Upload your first meme
-                      </Button>
-                    </Link>
-                  )}
-                </div>
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Image className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground text-sm">
+                      {isOwnProfile ? t.profile?.noMemesSelf || "You haven't uploaded any memes yet" : t.profile?.noMemesOther || "No memes uploaded yet"}
+                    </p>
+                    {isOwnProfile && (
+                      <Link href="/upload">
+                        <Button className="mt-4 rounded-full gap-2" size="sm">
+                          <Upload className="h-4 w-4" />
+                          {t.upload?.title || "Upload Meme"}
+                        </Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
               )}
             </TabsContent>
 
-            <TabsContent value="badges" className="mt-4">
+            <TabsContent value="badges" className="mt-3">
               {overview?.badges && overview.badges.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {overview.badges.map((ub) => (
-                    <div 
-                      key={ub.id}
-                      className="bg-card rounded-xl border p-4 text-center"
-                      data-testid={`badge-${ub.badge.slug}`}
-                    >
-                      <div className="text-4xl mb-2">
-                        <Award className="h-10 w-10 mx-auto text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-sm">{ub.badge.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ub.badge.description}</p>
-                      {ub.badge.xpReward && ub.badge.xpReward > 0 && (
-                        <Badge variant="secondary" className="mt-2 text-xs">
-                          +{ub.badge.xpReward} XP
-                        </Badge>
-                      )}
-                    </div>
+                    <Card key={ub.id} className="overflow-hidden" data-testid={`badge-${ub.badge.slug}`}>
+                      <CardContent className="p-4 text-center">
+                        <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Award className="h-6 w-6 text-primary" />
+                        </div>
+                        <h3 className="font-semibold text-sm">{ub.badge.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ub.badge.description}</p>
+                        {ub.badge.xpReward && ub.badge.xpReward > 0 && (
+                          <Badge variant="secondary" className="mt-2 text-xs gap-0.5">
+                            <Zap className="h-3 w-3" />
+                            +{ub.badge.xpReward}
+                          </Badge>
+                        )}
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-card rounded-2xl border">
-                  <Award className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No badges earned yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Keep uploading and engaging to earn badges!</p>
-                </div>
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground text-sm">{t.profile?.noBadges || "No badges earned yet"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t.profile?.earnBadges || "Keep uploading and engaging to earn badges!"}</p>
+                  </CardContent>
+                </Card>
               )}
             </TabsContent>
 
-            <TabsContent value="xp" className="mt-4">
-              <div className="bg-card rounded-2xl border p-5 space-y-5">
-                <div className="flex items-center gap-4">
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${config.bgGradient} flex items-center justify-center shadow-lg`}>
-                    <LevelIcon className="h-8 w-8 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg">{config.label}</h3>
-                    <p className="text-2xl font-bold text-primary">{profile?.xp || 0} XP</p>
-                  </div>
-                </div>
-                
-                {level !== "meme_lord" && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t.xp.progressTo} {levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.label}</span>
-                      <span className="font-medium">
-                        {(profile?.xp || 0) - config.minXp} / {(levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 0) - config.minXp}
-                      </span>
-                    </div>
-                    <Progress 
-                      value={((profile?.xp || 0) - config.minXp) / ((levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 1) - config.minXp) * 100} 
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground text-right">
-                      {(levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 0) - (profile?.xp || 0)} {t.xp.xpNeeded}
-                    </p>
-                  </div>
-                )}
-
-                {level === "meme_lord" && (
-                  <div className="text-center py-4">
-                    <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black px-4 py-2">
-                      <Crown className="h-4 w-4 mr-2" />
-                      {t.xp.maxLevel}
-                    </Badge>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t">
-                  <h4 className="font-semibold text-sm mb-3">{t.xp.howToEarn}</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <Upload className="h-4 w-4 text-green-500" />
-                      <span>+10 XP</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <Heart className="h-4 w-4 text-red-500" />
-                      <span>+2 XP</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <MessageCircle className="h-4 w-4 text-blue-500" />
-                      <span>+5 XP</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <Users className="h-4 w-4 text-purple-500" />
-                      <span>+5 XP</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="activity" className="mt-4">
+            <TabsContent value="activity" className="mt-3">
               {xpEvents.length > 0 ? (
                 <div className="space-y-2">
                   {xpEvents.map((event) => {
                     const sourceInfo = xpSourceLabels[event.source] || { label: event.source, icon: Zap, color: "text-primary" };
                     const EventIcon = sourceInfo.icon;
                     return (
-                      <div key={event.id} className="bg-card rounded-xl border p-4 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg bg-muted flex items-center justify-center`}>
-                          <EventIcon className={`h-5 w-5 ${sourceInfo.color}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{sourceInfo.label}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {event.createdAt && formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
-                          </p>
-                        </div>
-                        <Badge variant="secondary" className="text-green-600">
-                          +{event.amount} XP
-                        </Badge>
-                      </div>
+                      <Card key={event.id}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-lg bg-muted flex items-center justify-center`}>
+                            <EventIcon className={`h-4 w-4 ${sourceInfo.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{sourceInfo.label}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {event.createdAt && formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="text-green-600 text-xs">
+                            +{event.amount} XP
+                          </Badge>
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-card rounded-2xl border">
-                  <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No recent activity</p>
-                  <p className="text-sm text-muted-foreground mt-1">Start uploading and engaging to earn XP!</p>
-                </div>
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground text-sm">{t.profile?.noActivity || "No recent activity"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t.profile?.startActivity || "Start uploading and engaging to earn XP!"}</p>
+                  </CardContent>
+                </Card>
               )}
+
+              {/* XP Earning Guide */}
+              <Card className="mt-4">
+                <CardContent className="p-4">
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" />
+                    {t.xp.howToEarn}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Upload className="h-4 w-4 text-green-500" />
+                      <span className="text-muted-foreground">+10 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Heart className="h-4 w-4 text-red-500" />
+                      <span className="text-muted-foreground">+2 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <MessageCircle className="h-4 w-4 text-blue-500" />
+                      <span className="text-muted-foreground">+5 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Users className="h-4 w-4 text-purple-500" />
+                      <span className="text-muted-foreground">+5 XP</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
