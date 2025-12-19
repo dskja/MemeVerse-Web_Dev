@@ -123,7 +123,11 @@ export class MemStorage implements IStorage {
 
   async createContact(insertContact: InsertContact): Promise<Contact> {
     const id = randomUUID();
-    const contact: Contact = { ...insertContact, id };
+    const contact: Contact = { 
+      ...insertContact, 
+      id, 
+      memeIdea: insertContact.memeIdea ?? null 
+    };
     this.contacts.set(id, contact);
     return contact;
   }
