@@ -254,3 +254,101 @@ export const XP_REWARDS = {
   comment_received: 3,
   follow_received: 5,
 };
+
+// Profile Preferences
+export const THEME_OPTIONS = ["light", "dark", "system"] as const;
+export type ThemeOption = typeof THEME_OPTIONS[number];
+
+export const LANGUAGE_OPTIONS = ["en", "de"] as const;
+export type LanguageOption = typeof LANGUAGE_OPTIONS[number];
+
+export const profilePreferences = pgTable("profile_preferences", {
+  userId: varchar("user_id").primaryKey(),
+  theme: varchar("theme").default("system"),
+  language: varchar("language").default("en"),
+  emailNotifications: boolean("email_notifications").default(true),
+  pushNotifications: boolean("push_notifications").default(true),
+  showXpProgress: boolean("show_xp_progress").default(true),
+  showBadges: boolean("show_badges").default(true),
+  allowDirectMessages: boolean("allow_direct_messages").default(true),
+  profilePrivacy: varchar("profile_privacy").default("public"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProfilePreferencesSchema = createInsertSchema(profilePreferences).omit({ updatedAt: true });
+export type InsertProfilePreferences = z.infer<typeof insertProfilePreferencesSchema>;
+export type ProfilePreferences = typeof profilePreferences.$inferSelect;
+
+// Social Links
+export const SOCIAL_PLATFORMS = ["twitter", "instagram", "tiktok", "youtube", "discord", "website"] as const;
+export type SocialPlatform = typeof SOCIAL_PLATFORMS[number];
+
+export const socialLinks = pgTable("social_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  platform: varchar("platform").notNull(),
+  url: varchar("url").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueUserPlatform: uniqueIndex("unique_user_platform_idx").on(table.userId, table.platform),
+}));
+
+export const insertSocialLinkSchema = createInsertSchema(socialLinks).omit({ id: true, createdAt: true });
+export type InsertSocialLink = z.infer<typeof insertSocialLinkSchema>;
+export type SocialLink = typeof socialLinks.$inferSelect;
+
+// Profile Highlights (pinned memes, achievements showcase)
+export const HIGHLIGHT_TYPES = ["pinned_meme", "featured_badge", "contest_win"] as const;
+export type HighlightType = typeof HIGHLIGHT_TYPES[number];
+
+export const profileHighlights = pgTable("profile_highlights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: varchar("type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  position: integer("position").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProfileHighlightSchema = createInsertSchema(profileHighlights).omit({ id: true, createdAt: true });
+export type InsertProfileHighlight = z.infer<typeof insertProfileHighlightSchema>;
+export type ProfileHighlight = typeof profileHighlights.$inferSelect;
+
+// Profile Stats (precomputed for performance)
+export const profileStats = pgTable("profile_stats", {
+  userId: varchar("user_id").primaryKey(),
+  totalLikesReceived: integer("total_likes_received").default(0),
+  totalCommentsReceived: integer("total_comments_received").default(0),
+  totalViews: integer("total_views").default(0),
+  contestsWon: integer("contests_won").default(0),
+  contestsEntered: integer("contests_entered").default(0),
+  longestStreak: integer("longest_streak").default(0),
+  currentStreak: integer("current_streak").default(0),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProfileStatsSchema = createInsertSchema(profileStats).omit({ updatedAt: true });
+export type InsertProfileStats = z.infer<typeof insertProfileStatsSchema>;
+export type ProfileStats = typeof profileStats.$inferSelect;
+
+// Helper function to get next level info
+export function getNextLevelInfo(currentLevel: UserLevel): { nextLevel: UserLevel | null; xpNeeded: number } {
+  const levels = USER_LEVELS;
+  const currentIndex = levels.indexOf(currentLevel);
+  if (currentIndex === levels.length - 1) {
+    return { nextLevel: null, xpNeeded: 0 };
+  }
+  const nextLevel = levels[currentIndex + 1];
+  return { nextLevel, xpNeeded: XP_THRESHOLDS[nextLevel] };
+}
+
+// Helper function to calculate XP progress percentage
+export function getXpProgress(xp: number, level: UserLevel): number {
+  const currentThreshold = XP_THRESHOLDS[level];
+  const { nextLevel, xpNeeded } = getNextLevelInfo(level);
+  if (!nextLevel) return 100;
+  const xpInLevel = xp - currentThreshold;
+  const xpForLevel = xpNeeded - currentThreshold;
+  return Math.min(100, Math.floor((xpInLevel / xpForLevel) * 100));
+}

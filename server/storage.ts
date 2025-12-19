@@ -11,6 +11,9 @@ import {
   contests, type Contest, type InsertContest,
   contestEntries, type ContestEntry, type InsertContestEntry,
   contestVotes, type ContestVote,
+  profilePreferences, type ProfilePreferences, type InsertProfilePreferences,
+  socialLinks, type SocialLink, type InsertSocialLink,
+  profileStats, type ProfileStats, type InsertProfileStats,
   calculateLevel, XP_REWARDS
 } from "@shared/schema";
 import { db } from "./db";
@@ -76,6 +79,26 @@ export interface IStorage {
   deleteContestEntry(entryId: string, userId: string): Promise<boolean>;
   voteForEntry(entryId: string, voterId: string): Promise<boolean>;
   hasVotedForEntry(entryId: string, voterId: string): Promise<boolean>;
+  
+  // Profile Preferences
+  getProfilePreferences(userId: string): Promise<ProfilePreferences | undefined>;
+  upsertProfilePreferences(prefs: InsertProfilePreferences): Promise<ProfilePreferences>;
+  
+  // Social Links
+  getSocialLinks(userId: string): Promise<SocialLink[]>;
+  upsertSocialLink(link: InsertSocialLink): Promise<SocialLink>;
+  deleteSocialLink(userId: string, platform: string): Promise<void>;
+  
+  // Profile Stats
+  getProfileStats(userId: string): Promise<ProfileStats | undefined>;
+  upsertProfileStats(stats: InsertProfileStats): Promise<ProfileStats>;
+  
+  // XP Events
+  getXpEvents(userId: string, limit?: number): Promise<XpEvent[]>;
+  
+  // Followers with profiles
+  getFollowersWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]>;
+  getFollowingWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -369,6 +392,110 @@ export class DatabaseStorage implements IStorage {
       and(eq(contestVotes.entryId, entryId), eq(contestVotes.voterId, voterId))
     );
     return !!result;
+  }
+
+  // Profile Preferences
+  async getProfilePreferences(userId: string): Promise<ProfilePreferences | undefined> {
+    const [prefs] = await db.select().from(profilePreferences).where(eq(profilePreferences.userId, userId));
+    return prefs;
+  }
+
+  async upsertProfilePreferences(prefs: InsertProfilePreferences): Promise<ProfilePreferences> {
+    const [result] = await db
+      .insert(profilePreferences)
+      .values(prefs)
+      .onConflictDoUpdate({
+        target: profilePreferences.userId,
+        set: {
+          theme: prefs.theme,
+          language: prefs.language,
+          emailNotifications: prefs.emailNotifications,
+          pushNotifications: prefs.pushNotifications,
+          showXpProgress: prefs.showXpProgress,
+          showBadges: prefs.showBadges,
+          allowDirectMessages: prefs.allowDirectMessages,
+          profilePrivacy: prefs.profilePrivacy,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Social Links
+  async getSocialLinks(userId: string): Promise<SocialLink[]> {
+    return await db.select().from(socialLinks).where(eq(socialLinks.userId, userId));
+  }
+
+  async upsertSocialLink(link: InsertSocialLink): Promise<SocialLink> {
+    const [result] = await db
+      .insert(socialLinks)
+      .values(link)
+      .onConflictDoUpdate({
+        target: [socialLinks.userId, socialLinks.platform],
+        set: { url: link.url },
+      })
+      .returning();
+    return result;
+  }
+
+  async deleteSocialLink(userId: string, platform: string): Promise<void> {
+    await db.delete(socialLinks).where(
+      and(eq(socialLinks.userId, userId), eq(socialLinks.platform, platform))
+    );
+  }
+
+  // Profile Stats
+  async getProfileStats(userId: string): Promise<ProfileStats | undefined> {
+    const [stats] = await db.select().from(profileStats).where(eq(profileStats.userId, userId));
+    return stats;
+  }
+
+  async upsertProfileStats(stats: InsertProfileStats): Promise<ProfileStats> {
+    const [result] = await db
+      .insert(profileStats)
+      .values(stats)
+      .onConflictDoUpdate({
+        target: profileStats.userId,
+        set: {
+          totalLikesReceived: stats.totalLikesReceived,
+          totalCommentsReceived: stats.totalCommentsReceived,
+          totalViews: stats.totalViews,
+          contestsWon: stats.contestsWon,
+          contestsEntered: stats.contestsEntered,
+          longestStreak: stats.longestStreak,
+          currentStreak: stats.currentStreak,
+          lastActiveAt: stats.lastActiveAt,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // XP Events
+  async getXpEvents(userId: string, limit: number = 20): Promise<XpEvent[]> {
+    return await db.select().from(xpEvents)
+      .where(eq(xpEvents.userId, userId))
+      .orderBy(desc(xpEvents.createdAt))
+      .limit(limit);
+  }
+
+  // Followers with profiles
+  async getFollowersWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]> {
+    const followersList = await this.getFollowers(userId);
+    const profiles = await Promise.all(
+      followersList.map(f => this.getProfile(f.followerId))
+    );
+    return followersList.map((f, i) => ({ ...f, profile: profiles[i] || null }));
+  }
+
+  async getFollowingWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]> {
+    const followingList = await this.getFollowing(userId);
+    const profiles = await Promise.all(
+      followingList.map(f => this.getProfile(f.followingId))
+    );
+    return followingList.map((f, i) => ({ ...f, profile: profiles[i] || null }));
   }
 }
 
