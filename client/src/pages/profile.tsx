@@ -260,99 +260,6 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  {(() => {
-                    const level = profile?.level || "newbie";
-                    const xp = profile?.xp || 0;
-                    const config = levelConfig[level] || levelConfig.newbie;
-                    const nextLevelKey = level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : level === "meme_master" ? "meme_lord" : null;
-                    const nextConfig = nextLevelKey ? levelConfig[nextLevelKey] : null;
-                    const xpInCurrentLevel = xp - config.minXp;
-                    const xpNeededForLevel = nextConfig ? nextConfig.minXp - config.minXp : 0;
-                    const progress = nextConfig ? Math.min(100, (xpInCurrentLevel / xpNeededForLevel) * 100) : 100;
-                    const LevelIcon = config.icon;
-                    const NextLevelIcon = nextConfig ? levelConfig[nextLevelKey!].icon : null;
-                    
-                    const xpActivities = [
-                      { action: t.xp.uploadMeme, xp: "+10 XP", icon: Upload, color: "text-green-500", bg: "bg-green-500/10" },
-                      { action: t.xp.receiveLike, xp: "+2 XP", icon: Heart, color: "text-red-500", bg: "bg-red-500/10" },
-                      { action: t.xp.getComment, xp: "+5 XP", icon: MessageCircle, color: "text-blue-500", bg: "bg-blue-500/10" },
-                      { action: t.xp.winContest, xp: "+100 XP", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
-                      { action: t.xp.dailyLogin, xp: "+5 XP", icon: Calendar, color: "text-purple-500", bg: "bg-purple-500/10" },
-                      { action: t.xp.gainFollower, xp: "+3 XP", icon: Users, color: "text-primary", bg: "bg-primary/10" },
-                    ];
-                    
-                    return (
-                      <div className="mt-4 space-y-4">
-                        <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 rounded-xl border-2 border-primary/20">
-                          <div className="absolute top-2 right-2">
-                            <Badge variant="secondary" className="text-xs font-bold">
-                              <LevelIcon className={`h-3 w-3 mr-1 ${config.color}`} />
-                              {config.label}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 mb-4">
-                            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${level === "meme_lord" ? "from-yellow-400 to-yellow-600" : level === "meme_master" ? "from-purple-400 to-purple-600" : level === "meme_fan" ? "from-blue-400 to-blue-600" : "from-gray-400 to-gray-600"} flex items-center justify-center shadow-lg`}>
-                              <LevelIcon className="h-7 w-7 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold">{xp.toLocaleString()} XP</p>
-                              <p className="text-sm text-muted-foreground">Total Experience</p>
-                            </div>
-                          </div>
-                          
-                          {nextConfig ? (
-                            <>
-                              <div className="flex items-center justify-between text-sm mb-2">
-                                <span className="text-muted-foreground">Progress to {nextConfig.label}</span>
-                                <span className="font-semibold">{Math.round(progress)}%</span>
-                              </div>
-                              <div className="relative">
-                                <Progress value={progress} className="h-3" />
-                                <div className="absolute -top-1 right-0 transform translate-x-1/2">
-                                  {NextLevelIcon && <NextLevelIcon className={`h-5 w-5 ${levelConfig[nextLevelKey!].color}`} />}
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-2 text-center">
-                                <span className="font-semibold text-primary">{(xpNeededForLevel - xpInCurrentLevel).toLocaleString()}</span> XP needed for next level
-                              </p>
-                            </>
-                          ) : (
-                            <div className="text-center py-2">
-                              <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-sm px-4 py-1.5">
-                                <Crown className="h-4 w-4 mr-1" />
-                                Maximum Level Achieved!
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {isOwnProfile && (
-                          <div className="bg-muted/30 p-4 rounded-xl">
-                            <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                              <Flame className="h-4 w-4 text-primary" />
-                              {t.xp.howToEarn}
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {xpActivities.map((activity) => {
-                                const ActivityIcon = activity.icon;
-                                return (
-                                  <div key={activity.action} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-background/50">
-                                    <div className={`w-6 h-6 rounded ${activity.bg} flex items-center justify-center`}>
-                                      <ActivityIcon className={`h-3 w-3 ${activity.color}`} />
-                                    </div>
-                                    <span className="flex-1 text-muted-foreground">{activity.action}</span>
-                                    <span className="font-semibold text-primary">{activity.xp}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
                   {profile?.bio ? (
                     <p className="mt-4 text-muted-foreground">{profile.bio}</p>
                   ) : isOwnProfile ? (
@@ -368,6 +275,10 @@ export default function Profile() {
               <TabsTrigger value="memes" className="gap-2">
                 <Image className="h-4 w-4" />
                 Memes
+              </TabsTrigger>
+              <TabsTrigger value="xp" className="gap-2">
+                <Flame className="h-4 w-4" />
+                {t.tabs.xpAndLevel}
               </TabsTrigger>
               <TabsTrigger value="badges" className="gap-2">
                 <Award className="h-4 w-4" />
@@ -448,6 +359,133 @@ export default function Profile() {
                   </p>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="xp" className="mt-6">
+              {(() => {
+                const level = profile?.level || "newbie";
+                const xp = profile?.xp || 0;
+                const config = levelConfig[level] || levelConfig.newbie;
+                const nextLevelKey = level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : level === "meme_master" ? "meme_lord" : null;
+                const nextConfig = nextLevelKey ? levelConfig[nextLevelKey] : null;
+                const xpInCurrentLevel = xp - config.minXp;
+                const xpNeededForLevel = nextConfig ? nextConfig.minXp - config.minXp : 0;
+                const progress = nextConfig ? Math.min(100, (xpInCurrentLevel / xpNeededForLevel) * 100) : 100;
+                const LevelIcon = config.icon;
+                const NextLevelIcon = nextConfig ? levelConfig[nextLevelKey!].icon : null;
+                
+                const xpActivities = [
+                  { action: t.xp.uploadMeme, xp: "+10 XP", icon: Upload, color: "text-green-500", bg: "bg-green-500/10" },
+                  { action: t.xp.receiveLike, xp: "+2 XP", icon: Heart, color: "text-red-500", bg: "bg-red-500/10" },
+                  { action: t.xp.getComment, xp: "+5 XP", icon: MessageCircle, color: "text-blue-500", bg: "bg-blue-500/10" },
+                  { action: t.xp.winContest, xp: "+100 XP", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+                  { action: t.xp.dailyLogin, xp: "+5 XP", icon: Calendar, color: "text-purple-500", bg: "bg-purple-500/10" },
+                  { action: t.xp.gainFollower, xp: "+3 XP", icon: Users, color: "text-primary", bg: "bg-primary/10" },
+                ];
+                
+                return (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${level === "meme_lord" ? "from-yellow-400 to-yellow-600" : level === "meme_master" ? "from-purple-400 to-purple-600" : level === "meme_fan" ? "from-blue-400 to-blue-600" : "from-gray-400 to-gray-600"} flex items-center justify-center shadow-lg`}>
+                            <LevelIcon className="h-8 w-8 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-2xl font-bold">{config.label}</h3>
+                              <Badge variant="outline" className={config.color}>{t.levels.level}</Badge>
+                            </div>
+                            <p className="text-3xl font-bold text-primary">{xp.toLocaleString()} XP</p>
+                          </div>
+                        </div>
+                        
+                        {nextConfig ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{t.xp.progressTo} {nextConfig.label}</span>
+                              <span className="font-semibold">{Math.round(progress)}%</span>
+                            </div>
+                            <div className="relative">
+                              <Progress value={progress} className="h-4" />
+                              <div className="absolute -top-1 right-0 transform translate-x-1/2">
+                                {NextLevelIcon && <NextLevelIcon className={`h-6 w-6 ${levelConfig[nextLevelKey!].color}`} />}
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground text-center">
+                              <span className="font-bold text-primary">{(xpNeededForLevel - xpInCurrentLevel).toLocaleString()}</span> {t.xp.xpNeeded}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-lg px-6 py-2">
+                              <Crown className="h-5 w-5 mr-2" />
+                              {t.xp.maxLevel}
+                            </Badge>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Flame className="h-5 w-5 text-primary" />
+                          {t.xp.howToEarn}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {xpActivities.map((activity) => {
+                            const ActivityIcon = activity.icon;
+                            return (
+                              <div key={activity.action} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border">
+                                <div className={`w-10 h-10 rounded-lg ${activity.bg} flex items-center justify-center`}>
+                                  <ActivityIcon className={`h-5 w-5 ${activity.color}`} />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium">{activity.action}</p>
+                                  <p className="text-sm text-primary font-bold">{activity.xp}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Star className="h-5 w-5 text-primary" />
+                          {t.levels.allLevels}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {Object.entries(levelConfig).map(([key, cfg]) => {
+                            const LvlIcon = cfg.icon;
+                            const isCurrentLevel = key === level;
+                            return (
+                              <div 
+                                key={key} 
+                                className={`p-4 rounded-xl text-center border-2 ${isCurrentLevel ? "border-primary bg-primary/5" : "border-transparent bg-muted/30"}`}
+                              >
+                                <div className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-br ${key === "meme_lord" ? "from-yellow-400 to-yellow-600" : key === "meme_master" ? "from-purple-400 to-purple-600" : key === "meme_fan" ? "from-blue-400 to-blue-600" : "from-gray-400 to-gray-600"} flex items-center justify-center mb-2`}>
+                                  <LvlIcon className="h-6 w-6 text-white" />
+                                </div>
+                                <p className="font-semibold text-sm">{cfg.label}</p>
+                                <p className="text-xs text-muted-foreground">{cfg.minXp.toLocaleString()} XP</p>
+                                {isCurrentLevel && <Badge className="mt-2" variant="default">{t.levels.current}</Badge>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="badges" className="mt-6">

@@ -131,6 +131,12 @@ export const translations = {
       memeFan: "Meme Fan",
       memeMaster: "Meme Master",
       memeLord: "Meme Lord",
+      allLevels: "All Levels",
+      current: "Current",
+      level: "Level",
+    },
+    tabs: {
+      xpAndLevel: "XP & Level",
     },
     xp: {
       uploadMeme: "Upload a meme",
@@ -148,6 +154,8 @@ export const translations = {
     about: {
       title: "About",
       ourStory: "Our Story",
+      features: "Features",
+      joinCommunity: "Join the MemeVerse Community",
       whyMemeverse: "Why MemeVerse?",
       followUs: "Follow us on Instagram for daily memes",
       storyPara1: "Welcome to MemeVerse, your ultimate destination for the freshest, funniest, and most relatable memes on the internet. We curate and create content that speaks to the everyday experiences of our generation.",
@@ -326,6 +334,12 @@ export const translations = {
       memeFan: "Meme-Fan",
       memeMaster: "Meme-Meister",
       memeLord: "Meme-Lord",
+      allLevels: "Alle Stufen",
+      current: "Aktuell",
+      level: "Stufe",
+    },
+    tabs: {
+      xpAndLevel: "XP & Stufe",
     },
     xp: {
       uploadMeme: "Meme hochladen",
@@ -343,6 +357,8 @@ export const translations = {
     about: {
       title: "Über uns",
       ourStory: "Unsere Geschichte",
+      features: "Funktionen",
+      joinCommunity: "Werde Teil der MemeVerse-Community",
       whyMemeverse: "Warum MemeVerse?",
       followUs: "Folge uns auf Instagram für tägliche Memes",
       storyPara1: "Willkommen bei MemeVerse, deinem ultimativen Ziel für die frischesten, lustigsten und nachvollziehbarsten Memes im Internet. Wir kuratieren und erstellen Inhalte, die zu den alltäglichen Erfahrungen unserer Generation sprechen.",

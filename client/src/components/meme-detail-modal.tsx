@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,18 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   const [liked, setLiked] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const modalContentRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && modalContentRef.current) {
+      modalContentRef.current.scrollTop = 0;
+    }
+  }, [isOpen, meme?.id]);
 
   const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: ["/api/memes", meme?.id, "comments"],
@@ -152,7 +159,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
-        <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+        <div ref={modalContentRef} className="flex flex-col md:flex-row h-full max-h-[90vh] overflow-y-auto">
           <div 
             className="flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[500px] relative"
             onMouseEnter={() => setShowControls(true)}
