@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Heart, ExternalLink, MessageCircle } from "lucide-react";
+import { Heart, ExternalLink, MessageCircle, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +141,7 @@ function MemeCard({
   });
 
   const isLiked = hasLiked || likeStatus?.hasLiked;
+  const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i) || meme.imageUrl?.includes("video");
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -160,12 +161,35 @@ function MemeCard({
       data-testid={`card-meme-${meme.id}`}
     >
       <Link href={`/meme/${meme.id}`}>
-        <img
-          src={meme.imageUrl}
-          alt={meme.title}
-          className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
-          loading="lazy"
-        />
+        {isVideo ? (
+          <div className="relative">
+            <video
+              src={meme.imageUrl}
+              className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+              muted
+              loop
+              playsInline
+              onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+              onMouseLeave={(e) => {
+                const video = e.target as HTMLVideoElement;
+                video.pause();
+                video.currentTime = 0;
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
+              <div className="bg-black/50 rounded-full p-3">
+                <Play className="h-8 w-8 text-white fill-white" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <img
+            src={meme.imageUrl}
+            alt={meme.title}
+            className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+            loading="lazy"
+          />
+        )}
       </Link>
       
       <div 

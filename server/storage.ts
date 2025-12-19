@@ -73,6 +73,7 @@ export interface IStorage {
   createContest(contest: InsertContest): Promise<Contest>;
   getContestEntries(contestId: string): Promise<ContestEntry[]>;
   submitContestEntry(entry: InsertContestEntry): Promise<ContestEntry>;
+  deleteContestEntry(entryId: string, userId: string): Promise<boolean>;
   voteForEntry(entryId: string, voterId: string): Promise<boolean>;
   hasVotedForEntry(entryId: string, voterId: string): Promise<boolean>;
 }
@@ -343,6 +344,13 @@ export class DatabaseStorage implements IStorage {
   async submitContestEntry(entry: InsertContestEntry): Promise<ContestEntry> {
     const [newEntry] = await db.insert(contestEntries).values(entry).returning();
     return newEntry;
+  }
+
+  async deleteContestEntry(entryId: string, userId: string): Promise<boolean> {
+    const result = await db.delete(contestEntries).where(
+      and(eq(contestEntries.id, entryId), eq(contestEntries.userId, userId))
+    ).returning();
+    return result.length > 0;
   }
 
   async voteForEntry(entryId: string, voterId: string): Promise<boolean> {

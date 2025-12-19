@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MessageCircle, Share2, Send, X } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Heart, MessageCircle, Share2, Send, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -24,6 +25,13 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   const { t } = useLanguage();
   const [commentText, setCommentText] = useState("");
   const [liked, setLiked] = useState(false);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showControls, setShowControls] = useState(false);
 
   const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: ["/api/memes", meme?.id, "comments"],
@@ -73,24 +81,174 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
     }
   };
 
+  const togglePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (videoRef.current && duration) {
+      const newTime = (value[0] / 100) * duration;
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      }
+    }
+  };
+
+  const handleRestart = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   if (!meme) return null;
 
   const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i) || meme.imageUrl?.includes("video");
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
         <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
-          <div className="flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[500px]">
+          <div 
+            className="flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[500px] relative"
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+          >
             {isVideo ? (
-              <video
-                src={meme.imageUrl}
-                controls
-                autoPlay
-                loop
-                muted
-                className="max-w-full max-h-full object-contain"
-              />
+              <>
+                <video
+                  ref={videoRef}
+                  src={meme.imageUrl}
+                  autoPlay
+                  loop
+                  muted={isMuted}
+                  playsInline
+                  className="max-w-full max-h-full object-contain cursor-pointer"
+                  onClick={togglePlayPause}
+                  onTimeUpdate={handleTimeUpdate}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  data-testid="video-player"
+                />
+                
+                {!isPlaying && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                    onClick={togglePlayPause}
+                  >
+                    <div className="bg-black/50 rounded-full p-4">
+                      <Play className="h-12 w-12 text-white fill-white" />
+                    </div>
+                  </div>
+                )}
+
+                <div 
+                  className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+                    showControls ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <div className="mb-2">
+                    <Slider
+                      value={[progress]}
+                      max={100}
+                      step={0.1}
+                      onValueChange={handleSeek}
+                      className="cursor-pointer"
+                      data-testid="video-progress-slider"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                        onClick={togglePlayPause}
+                        data-testid="button-video-play-pause"
+                      >
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                        onClick={handleRestart}
+                        data-testid="button-video-restart"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                        onClick={toggleMute}
+                        data-testid="button-video-mute"
+                      >
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      
+                      <span className="text-white text-xs">
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                      </span>
+                    </div>
+                    
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                      onClick={handleFullscreen}
+                      data-testid="button-video-fullscreen"
+                    >
+                      <Maximize className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
             ) : (
               <img
                 src={meme.imageUrl}

@@ -6,13 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Trophy, Clock, Vote, Image, CheckCircle, Play, Flame } from "lucide-react";
+import { Trophy, Clock, Vote, Image, CheckCircle, Play, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatDistanceToNow, differenceInHours, differenceInDays } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import type { Contest, ContestEntry, Meme } from "@shared/schema";
 
 export default function Contests() {
@@ -50,10 +49,23 @@ export default function Contests() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contests", activeContest?.id, "entries"] });
-      toast({ title: "Entry submitted!" });
+      toast({ title: t.contests.submitEntry + "!" });
     },
     onError: () => {
-      toast({ title: "Failed to submit entry", variant: "destructive" });
+      toast({ title: t.common.error, variant: "destructive" });
+    },
+  });
+
+  const removeEntryMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      return apiRequest("DELETE", `/api/contests/entries/${entryId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests", activeContest?.id, "entries"] });
+      toast({ title: t.contests.entryRemoved || "Entry removed!" });
+    },
+    onError: () => {
+      toast({ title: t.common.error, variant: "destructive" });
     },
   });
 
@@ -63,14 +75,15 @@ export default function Contests() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contests", activeContest?.id, "entries"] });
-      toast({ title: "Vote cast!" });
+      toast({ title: t.contests.vote + "!" });
     },
     onError: () => {
-      toast({ title: "Failed to vote", variant: "destructive" });
+      toast({ title: t.common.error, variant: "destructive" });
     },
   });
 
-  const userHasEntered = entries.some((e) => e.userId === user?.id);
+  const userEntry = entries.find((e) => e.userId === user?.id);
+  const userHasEntered = !!userEntry;
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,19 +117,31 @@ export default function Contests() {
                     </div>
                     <Badge variant="outline" className="gap-1">
                       <Clock className="h-3 w-3" />
-                      Ends {activeContest.endsAt && formatDistanceToNow(new Date(activeContest.endsAt), { addSuffix: true })}
+                      {t.contests.endsIn} {activeContest.endsAt && formatDistanceToNow(new Date(activeContest.endsAt))}
                     </Badge>
                   </div>
                   {activeContest.theme && (
-                    <p className="text-sm text-primary mt-2">Theme: {activeContest.theme}</p>
+                    <p className="text-sm text-primary mt-2">{t.contests.theme}: {activeContest.theme}</p>
                   )}
                 </CardHeader>
                 <CardContent>
                   {user ? (
                     userHasEntered ? (
-                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                        <CheckCircle className="h-4 w-4" />
-                        {t.contests.submitEntry}
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-4 w-4" />
+                          {t.contests.submitEntry}
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => userEntry && removeEntryMutation.mutate(userEntry.id)}
+                          disabled={removeEntryMutation.isPending}
+                          data-testid="button-remove-entry"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t.contests.removeEntry || "Remove Entry"}
+                        </Button>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -124,23 +149,35 @@ export default function Contests() {
                           {t.contests.submitEntry}:
                         </p>
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                          {userMemes.map((meme) => (
-                            <button
-                              key={meme.id}
-                              onClick={() => submitEntryMutation.mutate(meme.id)}
-                              disabled={submitEntryMutation.isPending}
-                              className="aspect-square rounded-md overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
-                              data-testid={`button-submit-meme-${meme.id}`}
-                            >
-                              <img src={meme.imageUrl} alt={meme.title} className="w-full h-full object-cover" />
-                            </button>
-                          ))}
+                          {userMemes.map((meme) => {
+                            const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i);
+                            return (
+                              <button
+                                key={meme.id}
+                                onClick={() => submitEntryMutation.mutate(meme.id)}
+                                disabled={submitEntryMutation.isPending}
+                                className="aspect-square rounded-md overflow-hidden border-2 border-transparent hover:border-primary transition-colors relative"
+                                data-testid={`button-submit-meme-${meme.id}`}
+                              >
+                                {isVideo ? (
+                                  <>
+                                    <video src={meme.imageUrl} className="w-full h-full object-cover" muted />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                      <Play className="h-6 w-6 text-white fill-white" />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <img src={meme.imageUrl} alt={meme.title} className="w-full h-full object-cover" />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                         {userMemes.length === 0 && (
                           <p className="text-sm text-muted-foreground">
-                            You don't have any memes yet.{" "}
+                            {t.memes.noMemes}{" "}
                             <Link href="/upload" className="text-primary hover:underline">
-                              Upload one to participate!
+                              {t.memes.uploadFirst}
                             </Link>
                           </p>
                         )}
@@ -170,8 +207,12 @@ export default function Contests() {
                         entry={entry}
                         rank={index + 1}
                         canVote={!!user && entry.userId !== user.id}
+                        isOwner={user?.id === entry.userId}
                         onVote={() => voteMutation.mutate(entry.id)}
+                        onRemove={() => removeEntryMutation.mutate(entry.id)}
                         isVoting={voteMutation.isPending}
+                        isRemoving={removeEntryMutation.isPending}
+                        t={t}
                       />
                     ))}
                   </div>
@@ -179,7 +220,7 @@ export default function Contests() {
                   <Card>
                     <CardContent className="p-8 text-center">
                       <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No entries yet. Be the first!</p>
+                      <p className="text-muted-foreground">{t.memes.noMemes}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -205,14 +246,22 @@ function ContestEntryCard({
   entry,
   rank,
   canVote,
+  isOwner,
   onVote,
+  onRemove,
   isVoting,
+  isRemoving,
+  t,
 }: {
   entry: ContestEntry;
   rank: number;
   canVote: boolean;
+  isOwner: boolean;
   onVote: () => void;
+  onRemove: () => void;
   isVoting: boolean;
+  isRemoving: boolean;
+  t: any;
 }) {
   const { data: meme } = useQuery<Meme>({
     queryKey: ["/api/memes", entry.memeId],
@@ -222,29 +271,55 @@ function ContestEntryCard({
     },
   });
 
+  const isVideo = meme?.imageUrl?.match(/\.(mp4|webm|mov)$/i);
+
   return (
     <Card className="overflow-hidden" data-testid={`contest-entry-${entry.id}`}>
       {meme && (
         <Link href={`/meme/${meme.id}`}>
-          <img src={meme.imageUrl} alt={meme.title} className="w-full aspect-square object-cover" />
+          <div className="relative">
+            {isVideo ? (
+              <>
+                <video src={meme.imageUrl} className="w-full aspect-square object-cover" muted />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Play className="h-8 w-8 text-white fill-white" />
+                </div>
+              </>
+            ) : (
+              <img src={meme.imageUrl} alt={meme.title} className="w-full aspect-square object-cover" />
+            )}
+          </div>
         </Link>
       )}
       <CardContent className="p-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             {rank <= 3 && (
               <span className={`text-lg font-bold ${rank === 1 ? "text-yellow-500" : rank === 2 ? "text-gray-400" : "text-amber-600"}`}>
                 #{rank}
               </span>
             )}
-            <span className="text-sm font-medium">{entry.votes || 0} votes</span>
+            <span className="text-sm font-medium">{entry.votes || 0} {t.contests.votes}</span>
           </div>
-          {canVote && (
-            <Button size="sm" variant="outline" onClick={onVote} disabled={isVoting} data-testid={`button-vote-${entry.id}`}>
-              <Vote className="h-3 w-3 mr-1" />
-              Vote
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {isOwner && (
+              <Button 
+                size="sm" 
+                variant="destructive" 
+                onClick={onRemove} 
+                disabled={isRemoving}
+                data-testid={`button-remove-entry-${entry.id}`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+            {canVote && (
+              <Button size="sm" variant="outline" onClick={onVote} disabled={isVoting} data-testid={`button-vote-${entry.id}`}>
+                <Vote className="h-3 w-3 mr-1" />
+                {t.contests.vote}
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

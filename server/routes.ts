@@ -507,6 +507,21 @@ export async function registerRoutes(
     }
   });
 
+  // Contests - Delete entry (protected)
+  app.delete("/api/contests/entries/:entryId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = req.params.entryId;
+      const deleted = await storage.deleteContestEntry(entryId, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Entry not found or not owned by you" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete entry" });
+    }
+  });
+
   // Contests - Vote for entry (protected)
   app.post("/api/contests/entries/:entryId/vote", isAuthenticated, async (req: any, res) => {
     try {
