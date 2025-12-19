@@ -46,6 +46,10 @@ export function Navigation() {
 
   const scrollToSection = (href: string) => {
     if (href.startsWith("#")) {
+      if (!isHomePage) {
+        window.location.href = "/" + href;
+        return;
+      }
       const element = document.querySelector(href);
       if (element) {
         element.scrollIntoView({ behavior: "smooth" });
