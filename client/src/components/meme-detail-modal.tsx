@@ -32,7 +32,6 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   const [isMuted, setIsMuted] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [showControls, setShowControls] = useState(false);
 
   useEffect(() => {
     if (isOpen && modalContentRef.current) {
@@ -162,8 +161,6 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
         <div ref={modalContentRef} className="flex flex-col md:flex-row h-full max-h-[90vh] overflow-y-auto">
           <div 
             className="flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[500px] relative"
-            onMouseEnter={() => setShowControls(true)}
-            onMouseLeave={() => setShowControls(false)}
           >
             {isVideo ? (
               <>
@@ -195,9 +192,8 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                 )}
 
                 <div 
-                  className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent p-4 pb-6 transition-opacity duration-300 ${
-                    showControls ? "opacity-100" : "opacity-0"
-                  }`}
+                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent p-4 pb-6"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <div className="mb-3">
                     <Slider
@@ -216,7 +212,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                         size="icon"
                         variant="ghost"
                         className="h-10 w-10 text-white hover:text-white hover:bg-white/20 rounded-full"
-                        onClick={togglePlayPause}
+                        onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}
                         data-testid="button-video-play-pause"
                       >
                         {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
@@ -226,7 +222,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                         size="icon"
                         variant="ghost"
                         className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
-                        onClick={handleRestart}
+                        onClick={(e) => { e.stopPropagation(); handleRestart(); }}
                         data-testid="button-video-restart"
                       >
                         <RotateCcw className="h-4 w-4" />
@@ -237,7 +233,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                           size="icon"
                           variant="ghost"
                           className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
-                          onClick={toggleMute}
+                          onClick={(e) => { e.stopPropagation(); toggleMute(); }}
                           data-testid="button-video-mute"
                         >
                           {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -253,7 +249,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                       size="icon"
                       variant="ghost"
                       className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
-                      onClick={handleFullscreen}
+                      onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}
                       data-testid="button-video-fullscreen"
                     >
                       <Maximize className="h-4 w-4" />
