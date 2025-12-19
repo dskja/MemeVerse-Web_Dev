@@ -101,7 +101,9 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-2">
-            <UserSearch />
+            <div className="hidden sm:block">
+              <UserSearch />
+            </div>
             {user && <NotificationsDropdown />}
             <ThemeToggle />
             
@@ -177,26 +179,42 @@ export function Navigation() {
         {isMobileMenuOpen && (
           <div className="md:hidden pb-4 border-t border-border bg-background/95 backdrop-blur-lg">
             <div className="flex flex-col gap-1 pt-4">
+              <div className="px-2 pb-2">
+                <UserSearch />
+              </div>
               {navLinks.map((link) => (
-                <Button
-                  key={link.name}
-                  variant="ghost"
-                  className="justify-start"
-                  onClick={() => scrollToSection(link.href)}
-                  data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
-                >
-                  {link.name}
-                </Button>
+                link.href.startsWith("/") ? (
+                  <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
+                    >
+                      {link.name === "Leaderboard" && <Trophy className="h-4 w-4 mr-2" />}
+                      {link.name}
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    key={link.name}
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => scrollToSection(link.href)}
+                    data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
+                  >
+                    {link.name}
+                  </Button>
+                )
               ))}
               {user && (
                 <>
-                  <Link href="/profile">
+                  <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <User className="h-4 w-4" />
                       My Profile
                     </Button>
                   </Link>
-                  <Link href="/upload">
+                  <Link href="/upload" onClick={() => setIsMobileMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <Upload className="h-4 w-4" />
                       Upload Meme
