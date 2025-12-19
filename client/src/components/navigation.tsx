@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy } from "lucide-react";
+import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -9,9 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
-import { LanguageSwitcher } from "./language-switcher";
 import { UserSearch } from "./user-search";
 import { NotificationsDropdown } from "./notifications-dropdown";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,7 +25,7 @@ export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isLoading, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
 
   const navLinks = [
     { name: t.nav.about, href: "#about" },
@@ -108,7 +111,6 @@ export function Navigation() {
               <UserSearch />
             </div>
             {user && <NotificationsDropdown />}
-            <LanguageSwitcher />
             <ThemeToggle />
             
             {isLoading ? (
@@ -136,6 +138,30 @@ export function Navigation() {
                       {t.nav.uploadMeme}
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      {t.nav.language}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem
+                          onClick={() => setLanguage("en")}
+                          className={language === "en" ? "bg-accent" : ""}
+                          data-testid="button-lang-en"
+                        >
+                          English
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setLanguage("de")}
+                          className={language === "de" ? "bg-accent" : ""}
+                          data-testid="button-lang-de"
+                        >
+                          Deutsch
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => logout()}
@@ -148,14 +174,39 @@ export function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button
-                onClick={() => window.location.href = "/api/login"}
-                className="gap-2"
-                data-testid="button-login"
-              >
-                <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">{t.nav.login}</span>
-              </Button>
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" data-testid="button-language-guest">
+                      <Globe className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setLanguage("en")}
+                      className={language === "en" ? "bg-accent" : ""}
+                      data-testid="button-guest-lang-en"
+                    >
+                      English
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setLanguage("de")}
+                      className={language === "de" ? "bg-accent" : ""}
+                      data-testid="button-guest-lang-de"
+                    >
+                      Deutsch
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  onClick={() => window.location.href = "/api/login"}
+                  className="gap-2"
+                  data-testid="button-login"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t.nav.login}</span>
+                </Button>
+              </>
             )}
 
             <Button
@@ -226,6 +277,30 @@ export function Navigation() {
                   </Link>
                 </>
               )}
+              <div className="px-2 py-2 border-t border-border mt-2">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                  <Globe className="h-3 w-3" />
+                  {t.nav.language}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant={language === "en" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLanguage("en")}
+                    data-testid="button-mobile-lang-en"
+                  >
+                    English
+                  </Button>
+                  <Button
+                    variant={language === "de" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLanguage("de")}
+                    data-testid="button-mobile-lang-de"
+                  >
+                    Deutsch
+                  </Button>
+                </div>
+              </div>
               <Button
                 className="mt-2 gap-2"
                 onClick={() => window.open("https://instagram.com/MemeVerseDC", "_blank")}

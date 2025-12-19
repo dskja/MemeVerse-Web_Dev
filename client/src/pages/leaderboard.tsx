@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Medal, Award, Crown, Flame, Star } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Flame, Star, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import type { UserProfile } from "@shared/schema";
 
@@ -23,18 +25,36 @@ const levelColors: Record<string, string> = {
   meme_lord: "text-yellow-500",
 };
 
-const levelLabels: Record<string, string> = {
-  newbie: "Newbie",
-  meme_fan: "Meme Fan",
-  meme_master: "Meme Master",
-  meme_lord: "Meme Lord",
+const levelBgColors: Record<string, string> = {
+  newbie: "bg-muted",
+  meme_fan: "bg-blue-500/10",
+  meme_master: "bg-purple-500/10",
+  meme_lord: "bg-yellow-500/10",
 };
+
+const levelXpThresholds = [
+  { level: "newbie", xp: 0 },
+  { level: "meme_fan", xp: 100 },
+  { level: "meme_master", xp: 500 },
+  { level: "meme_lord", xp: 2000 },
+];
 
 export default function Leaderboard() {
   const { data: leaderboard = [], isLoading } = useQuery<UserProfile[]>({
     queryKey: ["/api/leaderboard"],
   });
   const { t } = useLanguage();
+  const [showLevelGuide, setShowLevelGuide] = useState(false);
+
+  const getLevelLabel = (level: string) => {
+    switch (level) {
+      case "newbie": return t.levels.newbie;
+      case "meme_fan": return t.levels.memeFan;
+      case "meme_master": return t.levels.memeMaster;
+      case "meme_lord": return t.levels.memeLord;
+      default: return t.levels.newbie;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,8 +66,55 @@ export default function Leaderboard() {
               <Trophy className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-3xl font-bold">{t.leaderboard.title}</h1>
-            <p className="text-muted-foreground mt-2">Top creators in the MemeVerse community</p>
+            <p className="text-muted-foreground mt-2">{t.leaderboard.levelDescription}</p>
           </div>
+
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                onClick={() => setShowLevelGuide(!showLevelGuide)}
+                data-testid="button-toggle-level-guide"
+              >
+                <span className="flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  {t.leaderboard.levelGuide}
+                </span>
+                {showLevelGuide ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CardHeader>
+            {showLevelGuide && (
+              <CardContent className="pt-0">
+                <div className="grid gap-3">
+                  {levelXpThresholds.map(({ level, xp }) => {
+                    const LevelIcon = levelIcons[level];
+                    const levelColor = levelColors[level];
+                    const levelBg = levelBgColors[level];
+                    return (
+                      <div
+                        key={level}
+                        className={`flex items-center justify-between p-3 rounded-md ${levelBg}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <LevelIcon className={`h-5 w-5 ${levelColor}`} />
+                          <span className={`font-medium ${levelColor}`}>
+                            {getLevelLabel(level)}
+                          </span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {xp}+ XP
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  +10 XP {t.upload.title} | +2 XP Like | +5 XP {t.memes.comments}
+                </p>
+              </CardContent>
+            )}
+          </Card>
 
           {isLoading ? (
             <Card>
@@ -73,7 +140,6 @@ export default function Leaderboard() {
                     const rank = index + 1;
                     const LevelIcon = levelIcons[profile.level || "newbie"] || Star;
                     const levelColor = levelColors[profile.level || "newbie"];
-                    const levelLabel = levelLabels[profile.level || "newbie"];
 
                     return (
                       <Link
@@ -107,7 +173,7 @@ export default function Leaderboard() {
                           </div>
                           <div className={`flex items-center gap-1 text-xs ${levelColor}`}>
                             <LevelIcon className="h-3 w-3" />
-                            {levelLabel}
+                            {getLevelLabel(profile.level || "newbie")}
                           </div>
                         </div>
                         

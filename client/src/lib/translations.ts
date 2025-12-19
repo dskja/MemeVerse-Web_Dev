@@ -15,6 +15,7 @@ export const translations = {
       follow: "Follow",
       followOnInstagram: "Follow on Instagram",
       search: "Search users...",
+      language: "Language",
     },
     home: {
       heroTitle: "Welcome to MemeVerse",
@@ -65,6 +66,12 @@ export const translations = {
       selectCategory: "Select a category",
       uploadButton: "Upload Meme",
       uploading: "Uploading...",
+      uploadFile: "Upload File",
+      orUseUrl: "Or use URL",
+      chooseFile: "Choose File",
+      noFileChosen: "No file chosen",
+      image: "Image",
+      video: "Video",
     },
     contests: {
       title: "Weekly Contests",
@@ -87,6 +94,9 @@ export const translations = {
       xp: "XP",
       level: "Level",
       noUsers: "No users yet",
+      levelGuide: "Level Guide",
+      levelDescription: "Earn XP by uploading memes, receiving likes, and participating in contests",
+      xpRequired: "XP Required",
     },
     notifications: {
       title: "Notifications",
@@ -135,6 +145,7 @@ export const translations = {
       follow: "Folgen",
       followOnInstagram: "Auf Instagram folgen",
       search: "Benutzer suchen...",
+      language: "Sprache",
     },
     home: {
       heroTitle: "Willkommen bei MemeVerse",
@@ -185,6 +196,12 @@ export const translations = {
       selectCategory: "Kategorie auswählen",
       uploadButton: "Meme hochladen",
       uploading: "Wird hochgeladen...",
+      uploadFile: "Datei hochladen",
+      orUseUrl: "Oder URL verwenden",
+      chooseFile: "Datei auswählen",
+      noFileChosen: "Keine Datei ausgewählt",
+      image: "Bild",
+      video: "Video",
     },
     contests: {
       title: "Wöchentliche Wettbewerbe",
@@ -207,6 +224,9 @@ export const translations = {
       xp: "XP",
       level: "Level",
       noUsers: "Noch keine Benutzer",
+      levelGuide: "Level-Guide",
+      levelDescription: "Sammle XP durch Meme-Uploads, erhaltene Likes und Wettbewerbs-Teilnahmen",
+      xpRequired: "XP benötigt",
     },
     notifications: {
       title: "Benachrichtigungen",

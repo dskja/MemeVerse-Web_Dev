@@ -530,5 +530,57 @@ export async function registerRoutes(
     }
   });
 
+  // File upload endpoint
+  app.post("/api/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const multer = (await import("multer")).default;
+      const path = await import("path");
+      const fs = await import("fs");
+      
+      const uploadDir = path.default.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      const storage_config = multer.diskStorage({
+        destination: (_req: any, _file: any, cb: any) => {
+          cb(null, uploadDir);
+        },
+        filename: (_req: any, file: any, cb: any) => {
+          const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+          const ext = path.default.extname(file.originalname);
+          cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+        },
+      });
+      
+      const upload = multer({ 
+        storage: storage_config,
+        limits: { fileSize: 50 * 1024 * 1024 },
+        fileFilter: (_req: any, file: any, cb: any) => {
+          const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|webm|mov/;
+          const extname = allowedTypes.test(path.default.extname(file.originalname).toLowerCase());
+          const mimetype = allowedTypes.test(file.mimetype);
+          if (extname && mimetype) {
+            return cb(null, true);
+          }
+          cb(new Error("Invalid file type"));
+        },
+      }).single("file");
+      
+      upload(req, res, (err: any) => {
+        if (err) {
+          return res.status(400).json({ error: err.message || "Upload failed" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl });
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
   return httpServer;
 }
