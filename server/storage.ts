@@ -75,6 +75,13 @@ export class DatabaseStorage implements IStorage {
 
   // Followers
   async follow(followerId: string, followingId: string): Promise<Follower> {
+    const existing = await this.isFollowing(followerId, followingId);
+    if (existing) {
+      const [current] = await db.select().from(followers).where(
+        and(eq(followers.followerId, followerId), eq(followers.followingId, followingId))
+      );
+      return current;
+    }
     const [result] = await db
       .insert(followers)
       .values({ followerId, followingId })
