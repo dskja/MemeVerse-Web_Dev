@@ -181,69 +181,71 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                     className="absolute inset-0 flex items-center justify-center cursor-pointer"
                     onClick={togglePlayPause}
                   >
-                    <div className="bg-black/50 rounded-full p-4">
-                      <Play className="h-12 w-12 text-white fill-white" />
+                    <div className="bg-primary/90 rounded-full p-5 shadow-xl transform transition-transform hover:scale-105">
+                      <Play className="h-14 w-14 text-white fill-white ml-1" />
                     </div>
                   </div>
                 )}
 
                 <div 
-                  className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+                  className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent p-4 pb-6 transition-opacity duration-300 ${
                     showControls ? "opacity-100" : "opacity-0"
                   }`}
                 >
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <Slider
                       value={[progress]}
                       max={100}
                       step={0.1}
                       onValueChange={handleSeek}
-                      className="cursor-pointer"
+                      className="cursor-pointer [&>span:first-child]:h-1.5 [&>span:first-child]:bg-white/30 [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-2 [&>span:first-child>span]:bg-primary"
                       data-testid="video-progress-slider"
                     />
                   </div>
                   
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                        className="h-10 w-10 text-white hover:text-white hover:bg-white/20 rounded-full"
                         onClick={togglePlayPause}
                         data-testid="button-video-play-pause"
                       >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
                       </Button>
                       
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                        className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
                         onClick={handleRestart}
                         data-testid="button-video-restart"
                       >
                         <RotateCcw className="h-4 w-4" />
                       </Button>
                       
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
-                        onClick={toggleMute}
-                        data-testid="button-video-mute"
-                      >
-                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                      </Button>
+                      <div className="flex items-center gap-1 ml-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
+                          onClick={toggleMute}
+                          data-testid="button-video-mute"
+                        >
+                          {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                       
-                      <span className="text-white text-xs">
-                        {formatTime(currentTime)} / {formatTime(duration)}
+                      <span className="text-white text-sm font-medium ml-2 tabular-nums">
+                        {formatTime(currentTime)} <span className="text-white/60">/</span> {formatTime(duration)}
                       </span>
                     </div>
                     
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-white hover:text-white hover:bg-white/20"
+                      className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
                       onClick={handleFullscreen}
                       data-testid="button-video-fullscreen"
                     >
