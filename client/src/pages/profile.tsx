@@ -266,21 +266,23 @@ export default function Profile() {
                     const config = levelConfig[level] || levelConfig.newbie;
                     const nextLevelKey = level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : level === "meme_master" ? "meme_lord" : null;
                     const nextConfig = nextLevelKey ? levelConfig[nextLevelKey] : null;
-                    const progress = nextConfig ? Math.min(100, ((xp - config.minXp) / (nextConfig.minXp - config.minXp)) * 100) : 100;
+                    const xpInCurrentLevel = xp - config.minXp;
+                    const xpNeededForLevel = nextConfig ? nextConfig.minXp - config.minXp : 0;
+                    const progress = nextConfig ? Math.min(100, (xpInCurrentLevel / xpNeededForLevel) * 100) : 100;
                     return (
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Level Progress</span>
+                      <div className="mt-4 space-y-3 bg-muted/50 p-3 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">XP Progress</span>
                           {nextConfig ? (
-                            <span className="text-muted-foreground">{xp} / {nextConfig.minXp} XP</span>
+                            <span className="text-sm font-medium">{xpInCurrentLevel} / {xpNeededForLevel}</span>
                           ) : (
-                            <span className="text-yellow-500 font-medium">Max Level!</span>
+                            <span className="text-yellow-500 font-bold text-sm">Max Level!</span>
                           )}
                         </div>
                         <Progress value={progress} className="h-2" />
                         {nextConfig && (
                           <p className="text-xs text-muted-foreground">
-                            {nextConfig.minXp - xp} XP until {nextConfig.label}
+                            {xpNeededForLevel - xpInCurrentLevel} XP until <strong>{nextConfig.label}</strong>
                           </p>
                         )}
                       </div>

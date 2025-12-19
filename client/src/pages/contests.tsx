@@ -58,14 +58,19 @@ export default function Contests() {
 
   const removeEntryMutation = useMutation({
     mutationFn: async (entryId: string) => {
+      if (!confirm("Are you sure you want to remove your entry from the contest?")) {
+        throw new Error("Cancelled");
+      }
       return apiRequest("DELETE", `/api/contests/entries/${entryId}`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contests", activeContest?.id, "entries"] });
-      toast({ title: t.contests.entryRemoved || "Entry removed!" });
+      toast({ title: t.contests.entryRemoved || "Entry removed!", variant: "default" });
     },
-    onError: () => {
-      toast({ title: t.common.error, variant: "destructive" });
+    onError: (error: any) => {
+      if (error.message !== "Cancelled") {
+        toast({ title: t.common.error, variant: "destructive" });
+      }
     },
   });
 
@@ -107,21 +112,21 @@ export default function Contests() {
           ) : activeContest ? (
             <div className="space-y-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
-                      <CardTitle>{activeContest.title}</CardTitle>
+                      <CardTitle className="text-2xl">{activeContest.title}</CardTitle>
                       {activeContest.description && (
-                        <CardDescription className="mt-2">{activeContest.description}</CardDescription>
+                        <CardDescription className="mt-2 text-base">{activeContest.description}</CardDescription>
                       )}
                     </div>
-                    <Badge variant="outline" className="gap-1">
-                      <Clock className="h-3 w-3" />
+                    <Badge className="gap-1 text-sm" variant="default">
+                      <Clock className="h-4 w-4" />
                       {t.contests.endsIn} {activeContest.endsAt && formatDistanceToNow(new Date(activeContest.endsAt))}
                     </Badge>
                   </div>
                   {activeContest.theme && (
-                    <p className="text-sm text-primary mt-2">{t.contests.theme}: {activeContest.theme}</p>
+                    <p className="text-base font-semibold text-primary mt-3">{t.contests.theme}: {activeContest.theme}</p>
                   )}
                 </CardHeader>
                 <CardContent>
@@ -196,25 +201,27 @@ export default function Contests() {
                 {entriesLoading ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="aspect-square rounded-md" />
+                      <Skeleton key={i} className="aspect-square rounded-lg" />
                     ))}
                   </div>
                 ) : entries.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {entries.map((entry, index) => (
-                      <ContestEntryCard
-                        key={entry.id}
-                        entry={entry}
-                        rank={index + 1}
-                        canVote={!!user && entry.userId !== user.id}
-                        isOwner={user?.id === entry.userId}
-                        onVote={() => voteMutation.mutate(entry.id)}
-                        onRemove={() => removeEntryMutation.mutate(entry.id)}
-                        isVoting={voteMutation.isPending}
-                        isRemoving={removeEntryMutation.isPending}
-                        t={t}
-                      />
-                    ))}
+                    {entries
+                      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+                      .map((entry, index) => (
+                        <ContestEntryCard
+                          key={entry.id}
+                          entry={entry}
+                          rank={index + 1}
+                          canVote={!!user && entry.userId !== user.id}
+                          isOwner={user?.id === entry.userId}
+                          onVote={() => voteMutation.mutate(entry.id)}
+                          onRemove={() => removeEntryMutation.mutate(entry.id)}
+                          isVoting={voteMutation.isPending}
+                          isRemoving={removeEntryMutation.isPending}
+                          t={t}
+                        />
+                      ))}
                   </div>
                 ) : (
                   <Card>
