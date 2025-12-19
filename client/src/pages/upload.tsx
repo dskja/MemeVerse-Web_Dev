@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/navigation";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image, Video, Link } from "lucide-react";
+import { Upload, Image, Video, Link, FileUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -24,6 +24,11 @@ export default function UploadPage() {
     imageUrl: "",
   });
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [uploadMethod, setUploadMethod] = useState<"file" | "url">("file");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -45,16 +50,66 @@ export default function UploadPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      
+      if (file.type.startsWith("video/")) {
+        setMediaType("video");
+      } else {
+        setMediaType("image");
+      }
+    }
+  };
+
+  const uploadFileToServer = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error("Upload failed");
+    }
+    
+    const data = await response.json();
+    return data.url;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.imageUrl) {
+    
+    if (!form.title) {
       toast({ title: t.common.error, variant: "destructive" });
       return;
     }
-    uploadMutation.mutate(form);
+
+    if (uploadMethod === "file" && selectedFile) {
+      setIsUploading(true);
+      try {
+        const uploadedUrl = await uploadFileToServer(selectedFile);
+        uploadMutation.mutate({ title: form.title, imageUrl: uploadedUrl });
+      } catch {
+        toast({ title: t.common.error, variant: "destructive" });
+      } finally {
+        setIsUploading(false);
+      }
+    } else if (uploadMethod === "url" && form.imageUrl) {
+      uploadMutation.mutate(form);
+    } else {
+      toast({ title: t.common.error, variant: "destructive" });
+    }
   };
 
-  const isVideo = form.imageUrl?.match(/\.(mp4|webm|mov)$/i) || mediaType === "video";
+  const isVideo = uploadMethod === "file" 
+    ? selectedFile?.type.startsWith("video/") || mediaType === "video"
+    : form.imageUrl?.match(/\.(mp4|webm|mov)$/i) || mediaType === "video";
 
   if (isLoading) {
     return (
@@ -104,22 +159,63 @@ export default function UploadPage() {
                   <TabsList className="w-full">
                     <TabsTrigger value="image" className="flex-1 gap-2">
                       <Image className="h-4 w-4" />
-                      Image
+                      {t.upload.image}
                     </TabsTrigger>
                     <TabsTrigger value="video" className="flex-1 gap-2">
                       <Video className="h-4 w-4" />
-                      Video
+                      {t.upload.video}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <Tabs value={uploadMethod} onValueChange={(v) => setUploadMethod(v as "file" | "url")}>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="file" className="flex-1 gap-2">
+                      <FileUp className="h-4 w-4" />
+                      {t.upload.uploadFile}
+                    </TabsTrigger>
+                    <TabsTrigger value="url" className="flex-1 gap-2">
+                      <Link className="h-4 w-4" />
+                      {t.upload.orUseUrl}
                     </TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="image" className="mt-4">
+                  <TabsContent value="file" className="mt-4">
+                    <div className="space-y-4">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        accept={mediaType === "video" ? "video/*" : "image/*"}
+                        className="hidden"
+                        data-testid="input-file-upload"
+                      />
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-muted-foreground/25 rounded-md p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      >
+                        <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {t.upload.dragDrop}
+                        </p>
+                        <Button type="button" variant="outline" size="sm">
+                          {t.upload.chooseFile}
+                        </Button>
+                        {selectedFile && (
+                          <p className="mt-2 text-sm text-primary">{selectedFile.name}</p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="url" className="mt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="imageUrl">Image URL</Label>
+                      <Label htmlFor="imageUrl">{mediaType === "video" ? "Video URL" : "Image URL"}</Label>
                       <div className="relative">
                         <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="imageUrl"
-                          placeholder="https://example.com/meme.jpg"
+                          placeholder={mediaType === "video" ? "https://example.com/meme.mp4" : "https://example.com/meme.jpg"}
                           value={form.imageUrl}
                           onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
                           className="pl-10"
@@ -127,37 +223,17 @@ export default function UploadPage() {
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        JPG, PNG, GIF, WebP
-                      </p>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="video" className="mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="videoUrl">Video URL</Label>
-                      <div className="relative">
-                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="videoUrl"
-                          placeholder="https://example.com/meme.mp4"
-                          value={form.imageUrl}
-                          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                          className="pl-10"
-                          data-testid="input-video-url"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        MP4, WebM, MOV
+                        {mediaType === "video" ? "MP4, WebM, MOV" : "JPG, PNG, GIF, WebP"}
                       </p>
                     </div>
                   </TabsContent>
                 </Tabs>
 
-                {form.imageUrl && (
+                {(previewUrl || form.imageUrl) && (
                   <div className="rounded-md border overflow-hidden bg-muted">
                     {isVideo ? (
                       <video
-                        src={form.imageUrl}
+                        src={uploadMethod === "file" ? previewUrl : form.imageUrl}
                         controls
                         className="w-full max-h-64 object-contain"
                         onError={(e) => {
@@ -166,7 +242,7 @@ export default function UploadPage() {
                       />
                     ) : (
                       <img
-                        src={form.imageUrl}
+                        src={uploadMethod === "file" ? previewUrl : form.imageUrl}
                         alt="Preview"
                         className="w-full max-h-64 object-contain"
                         onError={(e) => {
@@ -180,10 +256,10 @@ export default function UploadPage() {
                 <Button
                   type="submit"
                   className="w-full gap-2"
-                  disabled={uploadMutation.isPending}
+                  disabled={uploadMutation.isPending || isUploading}
                   data-testid="button-upload-meme"
                 >
-                  {uploadMutation.isPending ? (
+                  {uploadMutation.isPending || isUploading ? (
                     t.upload.uploading
                   ) : (
                     <>
