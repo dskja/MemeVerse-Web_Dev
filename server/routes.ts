@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS } from "@shared/schema";
+import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -664,6 +664,97 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch profile overview" });
+    }
+  });
+
+  // Favorites endpoints
+  app.post("/api/favorites/:memeId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const memeId = req.params.memeId;
+      const favorite = await storage.addFavorite(userId, memeId);
+      res.json(favorite);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add favorite" });
+    }
+  });
+
+  app.delete("/api/favorites/:memeId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.removeFavorite(userId, req.params.memeId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove favorite" });
+    }
+  });
+
+  app.get("/api/favorites", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const favorites = await storage.getFavorites(userId);
+      const memes = await Promise.all(
+        favorites.map(f => storage.getMeme(f.memeId))
+      );
+      res.json(memes.filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+
+  app.get("/api/favorites/:memeId/check", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const hasFavorited = await storage.hasFavorited(userId, req.params.memeId);
+      res.json({ favorited: hasFavorited });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check favorite status" });
+    }
+  });
+
+  // Profile customization endpoints
+  app.patch("/api/profile/frame", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { frame } = req.body;
+      if (!PROFILE_FRAMES.includes(frame)) {
+        return res.status(400).json({ error: "Invalid frame" });
+      }
+      const profile = await storage.updateProfileFrame(userId, frame as ProfileFrame);
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update frame" });
+    }
+  });
+
+  app.patch("/api/profile/color", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { color } = req.body;
+      const profile = await storage.updateProfileColor(userId, color || null);
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update color" });
+    }
+  });
+
+  // Creator of Month
+  app.get("/api/creator-of-month", async (_req, res) => {
+    try {
+      const creator = await storage.getCreatorOfMonth();
+      res.json(creator);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch creator of month" });
+    }
+  });
+
+  // Verified users
+  app.get("/api/verified-users", async (_req, res) => {
+    try {
+      const users = await storage.getVerifiedUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch verified users" });
     }
   });
 

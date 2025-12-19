@@ -14,7 +14,8 @@ import {
   profilePreferences, type ProfilePreferences, type InsertProfilePreferences,
   socialLinks, type SocialLink, type InsertSocialLink,
   profileStats, type ProfileStats, type InsertProfileStats,
-  calculateLevel, XP_REWARDS
+  memeFavorites, type MemeFavorite, type InsertMemeFavorite,
+  calculateLevel, XP_REWARDS, type ProfileFrame
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
@@ -99,6 +100,23 @@ export interface IStorage {
   // Followers with profiles
   getFollowersWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]>;
   getFollowingWithProfiles(userId: string): Promise<(Follower & { profile: UserProfile | null })[]>;
+  
+  // Favorites
+  addFavorite(userId: string, memeId: string): Promise<MemeFavorite>;
+  removeFavorite(userId: string, memeId: string): Promise<void>;
+  getFavorites(userId: string): Promise<MemeFavorite[]>;
+  hasFavorited(userId: string, memeId: string): Promise<boolean>;
+  
+  // Profile customization
+  updateProfileFrame(userId: string, frame: ProfileFrame): Promise<UserProfile>;
+  updateProfileColor(userId: string, color: string | null): Promise<UserProfile>;
+  
+  // Creator of Month
+  getCreatorOfMonth(): Promise<UserProfile | null>;
+  setCreatorOfMonth(userId: string): Promise<UserProfile>;
+  
+  // Verified status
+  getVerifiedUsers(): Promise<UserProfile[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -496,6 +514,71 @@ export class DatabaseStorage implements IStorage {
       followingList.map(f => this.getProfile(f.followingId))
     );
     return followingList.map((f, i) => ({ ...f, profile: profiles[i] || null }));
+  }
+
+  // Favorites
+  async addFavorite(userId: string, memeId: string): Promise<MemeFavorite> {
+    const [favorite] = await db.insert(memeFavorites).values({ userId, memeId }).returning();
+    return favorite;
+  }
+
+  async removeFavorite(userId: string, memeId: string): Promise<void> {
+    await db.delete(memeFavorites).where(
+      and(eq(memeFavorites.userId, userId), eq(memeFavorites.memeId, memeId))
+    );
+  }
+
+  async getFavorites(userId: string): Promise<MemeFavorite[]> {
+    return await db.select().from(memeFavorites)
+      .where(eq(memeFavorites.userId, userId))
+      .orderBy(desc(memeFavorites.createdAt));
+  }
+
+  async hasFavorited(userId: string, memeId: string): Promise<boolean> {
+    const [favorite] = await db.select().from(memeFavorites)
+      .where(and(eq(memeFavorites.userId, userId), eq(memeFavorites.memeId, memeId)));
+    return !!favorite;
+  }
+
+  // Profile customization
+  async updateProfileFrame(userId: string, frame: ProfileFrame): Promise<UserProfile> {
+    const [profile] = await db.update(userProfiles)
+      .set({ profileFrame: frame })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return profile;
+  }
+
+  async updateProfileColor(userId: string, color: string | null): Promise<UserProfile> {
+    const [profile] = await db.update(userProfiles)
+      .set({ profileColor: color })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return profile;
+  }
+
+  // Creator of Month
+  async getCreatorOfMonth(): Promise<UserProfile | null> {
+    const [profile] = await db.select().from(userProfiles)
+      .where(eq(userProfiles.isCreatorOfMonth, true))
+      .limit(1);
+    return profile || null;
+  }
+
+  async setCreatorOfMonth(userId: string): Promise<UserProfile> {
+    await db.update(userProfiles).set({ isCreatorOfMonth: false });
+    const [profile] = await db.update(userProfiles)
+      .set({ isCreatorOfMonth: true, creatorOfMonthDate: new Date() })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    return profile;
+  }
+
+  // Verified status
+  async getVerifiedUsers(): Promise<UserProfile[]> {
+    return await db.select().from(userProfiles)
+      .where(eq(userProfiles.isVerified, true))
+      .orderBy(desc(userProfiles.xp));
   }
 }
 
