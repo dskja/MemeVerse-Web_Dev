@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react";
+import { Globe, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,19 +21,21 @@ export function LanguageSwitcher() {
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           onClick={() => setLanguage("en")}
-          className={language === "en" ? "bg-accent" : ""}
+          className={`gap-2 ${language === "en" ? "bg-primary/10 text-primary" : ""}`}
           data-testid="button-lang-en"
         >
-          <span className="mr-2">🇬🇧</span>
+          <span className="font-bold text-xs w-6 h-6 rounded-md bg-muted flex items-center justify-center">EN</span>
           English
+          {language === "en" && <Check className="h-4 w-4 ml-auto" />}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setLanguage("de")}
-          className={language === "de" ? "bg-accent" : ""}
+          className={`gap-2 ${language === "de" ? "bg-primary/10 text-primary" : ""}`}
           data-testid="button-lang-de"
         >
-          <span className="mr-2">🇩🇪</span>
+          <span className="font-bold text-xs w-6 h-6 rounded-md bg-muted flex items-center justify-center">DE</span>
           Deutsch
+          {language === "de" && <Check className="h-4 w-4 ml-auto" />}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
