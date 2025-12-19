@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
-import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy, Globe } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy, Globe, Home, Info, ImageIcon, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,12 +26,14 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isLoading, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
+  const [location] = useLocation();
+  const isHomePage = location === "/";
 
   const navLinks = [
-    { name: t.nav.about, href: "#about" },
-    { name: t.nav.memes, href: "#memes" },
-    { name: t.nav.leaderboard, href: "/leaderboard" },
-    { name: t.nav.contests, href: "/contests" },
+    { name: t.nav.about, href: "#about", icon: Info },
+    { name: t.nav.memes, href: "#memes", icon: ImageIcon },
+    { name: t.nav.leaderboard, href: "/leaderboard", icon: Crown },
+    { name: t.nav.contests, href: "/contests", icon: Trophy },
   ];
 
   useEffect(() => {
@@ -67,22 +69,29 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link
             href="/"
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 group"
             data-testid="link-logo"
           >
-            <img
-              src={logoImage}
-              alt="MemeVerse Logo"
-              className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover"
-            />
-            <span className="font-bold text-xl md:text-2xl">MemeVerse</span>
+            <div className={`relative ${isHomePage ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""} rounded-full transition-all duration-300 group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2 group-hover:ring-offset-background`}>
+              <img
+                src={logoImage}
+                alt="MemeVerse Logo"
+                className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover"
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-xl md:text-2xl bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">MemeVerse</span>
+              {isHomePage && <span className="text-[10px] text-muted-foreground -mt-1">@MemeVerseDC</span>}
+            </div>
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              link.href.startsWith("/") ? (
+            {navLinks.map((link) => {
+              const IconComponent = link.icon;
+              return link.href.startsWith("/") ? (
                 <Link key={link.name} href={link.href}>
-                  <Button variant="ghost" data-testid={`link-nav-${link.name.toLowerCase()}`}>
+                  <Button variant="ghost" className="gap-2" data-testid={`link-nav-${link.name.toLowerCase()}`}>
+                    <IconComponent className="h-4 w-4" />
                     {link.name}
                   </Button>
                 </Link>
@@ -90,16 +99,19 @@ export function Navigation() {
                 <Button
                   key={link.name}
                   variant="ghost"
+                  className="gap-2"
                   onClick={() => scrollToSection(link.href)}
                   data-testid={`link-nav-${link.name.toLowerCase()}`}
                 >
+                  <IconComponent className="h-4 w-4" />
                   {link.name}
                 </Button>
-              )
-            ))}
+              );
+            })}
             {user && (
               <Link href="/upload">
-                <Button variant="ghost" data-testid="link-nav-upload">
+                <Button variant="ghost" className="gap-2" data-testid="link-nav-upload">
+                  <Upload className="h-4 w-4" />
                   {t.nav.upload}
                 </Button>
               </Link>
@@ -237,15 +249,16 @@ export function Navigation() {
               <div className="px-2 pb-2">
                 <UserSearch />
               </div>
-              {navLinks.map((link) => (
-                link.href.startsWith("/") ? (
+              {navLinks.map((link) => {
+                const IconComponent = link.icon;
+                return link.href.startsWith("/") ? (
                   <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start gap-3"
                       data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
                     >
-                      {link.name === "Leaderboard" && <Trophy className="h-4 w-4 mr-2" />}
+                      <IconComponent className="h-5 w-5 text-primary" />
                       {link.name}
                     </Button>
                   </Link>
@@ -253,29 +266,30 @@ export function Navigation() {
                   <Button
                     key={link.name}
                     variant="ghost"
-                    className="justify-start"
+                    className="justify-start gap-3"
                     onClick={() => scrollToSection(link.href)}
                     data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
                   >
+                    <IconComponent className="h-5 w-5 text-primary" />
                     {link.name}
                   </Button>
-                )
-              ))}
+                );
+              })}
               {user && (
-                <>
+                <div className="border-t border-border mt-2 pt-2">
                   <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
-                      <User className="h-4 w-4" />
+                    <Button variant="ghost" className="w-full justify-start gap-3">
+                      <User className="h-5 w-5 text-primary" />
                       {t.nav.myProfile}
                     </Button>
                   </Link>
                   <Link href="/upload" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
-                      <Upload className="h-4 w-4" />
+                    <Button variant="ghost" className="w-full justify-start gap-3">
+                      <Upload className="h-5 w-5 text-primary" />
                       {t.nav.uploadMeme}
                     </Button>
                   </Link>
-                </>
+                </div>
               )}
               <div className="px-2 py-2 border-t border-border mt-2">
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
