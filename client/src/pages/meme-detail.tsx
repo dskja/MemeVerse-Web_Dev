@@ -169,7 +169,7 @@ export default function MemeDetail() {
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="pt-24 pb-16 px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-lg mx-auto">
             <Skeleton className="aspect-video w-full rounded-2xl" />
           </div>
         </main>
@@ -182,7 +182,7 @@ export default function MemeDetail() {
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="pt-24 pb-16 px-4">
-          <div className="max-w-2xl mx-auto text-center">
+          <div className="max-w-lg mx-auto text-center">
             <h1 className="text-2xl font-bold mb-4">Meme not found</h1>
             <Link href="/memes">
               <Button>Back to Memes</Button>
@@ -197,9 +197,9 @@ export default function MemeDetail() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="pt-16 pb-20">
-        <div className="max-w-2xl mx-auto">
-          <div className="px-4 py-3">
+      <main className="pt-20 pb-24">
+        <div className="max-w-lg mx-auto px-4 space-y-4">
+          <div>
             <Link href="/memes">
               <Button variant="ghost" size="sm" className="gap-2 -ml-2">
                 <ArrowLeft className="h-4 w-4" />
@@ -208,8 +208,8 @@ export default function MemeDetail() {
             </Link>
           </div>
 
-          <div className="bg-card sm:mx-4 sm:rounded-2xl sm:border sm:shadow-sm overflow-hidden">
-            <div className="relative bg-black">
+          <div className="bg-card rounded-2xl border shadow-sm overflow-hidden">
+            <div className="relative bg-black rounded-t-2xl overflow-hidden">
               {isVideo ? (
                 <div className="relative">
                   <video
@@ -218,7 +218,7 @@ export default function MemeDetail() {
                     loop
                     muted={isMuted}
                     playsInline
-                    className="w-full max-h-[60vh] object-contain cursor-pointer"
+                    className="w-full aspect-[4/5] object-contain cursor-pointer"
                     onClick={togglePlayPause}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
@@ -242,28 +242,28 @@ export default function MemeDetail() {
                 <img
                   src={meme.imageUrl}
                   alt={meme.title}
-                  className="w-full max-h-[60vh] object-contain"
+                  className="w-full aspect-[4/5] object-contain"
                 />
               )}
             </div>
 
             {isVideo && (
-              <div className="bg-card/95 backdrop-blur-sm border-t px-4 py-3 space-y-3">
+              <div className="bg-card border-t px-5 py-4 space-y-3">
                 <Slider
                   value={[progress]}
                   max={100}
                   step={0.1}
                   onValueChange={handleSeek}
-                  className="cursor-pointer [&_[role=slider]]:h-5 [&_[role=slider]]:w-5"
+                  className="cursor-pointer [&_[role=slider]]:h-6 [&_[role=slider]]:w-6"
                   data-testid="video-progress-slider"
                 />
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-11 w-11"
+                      className="h-12 w-12"
                       onClick={togglePlayPause}
                       data-testid="button-video-play-pause"
                     >
@@ -273,14 +273,14 @@ export default function MemeDetail() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-11 w-11"
+                      className="h-12 w-12"
                       onClick={toggleMute}
                       data-testid="button-video-mute"
                     >
                       {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
                     </Button>
                     
-                    <span className="text-sm text-muted-foreground ml-2 tabular-nums">
+                    <span className="text-sm text-muted-foreground tabular-nums">
                       {formatTime(currentTime)} / {formatTime(duration)}
                     </span>
                   </div>
@@ -288,7 +288,7 @@ export default function MemeDetail() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-11 w-11"
+                    className="h-12 w-12"
                     onClick={handleFullscreen}
                     data-testid="button-video-fullscreen"
                   >
@@ -298,8 +298,8 @@ export default function MemeDetail() {
               </div>
             )}
 
-            <div className="p-4 space-y-4">
-              <div className="flex items-start gap-3">
+            <div className="p-5 space-y-5">
+              <div className="flex items-start gap-4">
                 <Link href={`/profile/${meme.userId}`}>
                   <Avatar className="h-12 w-12 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
                     <AvatarImage src={profile?.avatarUrl || undefined} />
@@ -321,12 +321,12 @@ export default function MemeDetail() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-3 border-t">
+              <div className="flex items-center gap-3">
                 <Button
                   variant={likeStatus?.hasLiked ? "default" : "outline"}
                   onClick={handleLike}
                   disabled={likeMutation.isPending || unlikeMutation.isPending}
-                  className={`gap-2 rounded-full h-11 px-5 ${likeStatus?.hasLiked ? "bg-red-500 hover:bg-red-600 border-red-500" : ""}`}
+                  className={`gap-2 rounded-full h-12 px-6 text-base ${likeStatus?.hasLiked ? "bg-red-500 hover:bg-red-600 border-red-500" : ""}`}
                   data-testid="button-like"
                 >
                   <Heart className={`h-5 w-5 ${likeStatus?.hasLiked ? "fill-current" : ""}`} />
@@ -335,7 +335,7 @@ export default function MemeDetail() {
 
                 <Button
                   variant="outline"
-                  className="gap-2 rounded-full h-11 px-5"
+                  className="gap-2 rounded-full h-12 px-6 text-base"
                   data-testid="button-comments-count"
                 >
                   <MessageCircle className="h-5 w-5" />
@@ -345,23 +345,24 @@ export default function MemeDetail() {
                 <Button
                   variant="outline"
                   onClick={handleShare}
-                  className="gap-2 rounded-full h-11 px-5"
+                  className="gap-2 rounded-full h-12 px-6 text-base ml-auto"
                   data-testid="button-share"
                 >
                   <Share2 className="h-5 w-5" />
-                  Share
                 </Button>
               </div>
             </div>
+          </div>
 
-            <div className="border-t">
-              <div className="p-4">
-                <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
-                  <MessageCircle className="h-5 w-5 text-primary" />
-                  Comments ({comments.length})
-                </h2>
-                <CommentsSection memeId={meme.id} />
-              </div>
+          <div className="bg-card rounded-2xl border shadow-sm overflow-hidden">
+            <div className="p-5 border-b bg-muted/30">
+              <h2 className="font-semibold text-base flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-primary" />
+                Comments ({comments.length})
+              </h2>
+            </div>
+            <div className="p-5">
+              <CommentsSection memeId={meme.id} />
             </div>
           </div>
         </div>
