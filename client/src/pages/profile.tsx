@@ -15,9 +15,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Heart, UserPlus, UserMinus, Image, Trash2, Star, Flame, Medal, Crown, 
   Award, Play, Upload, MessageCircle, Users, Settings, 
-  Zap, TrendingUp, Grid3X3, Trophy, Share2, MoreHorizontal
+  Zap, TrendingUp, Grid3X3, Trophy, Share2, Globe, type LucideIcon
 } from "lucide-react";
-import { SiTwitter, SiInstagram, SiTiktok, SiYoutube, SiDiscord } from "react-icons/si";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -45,12 +44,13 @@ const levelConfig: Record<string, { icon: typeof Star; color: string; bgGradient
   meme_lord: { icon: Crown, color: "text-yellow-500", bgGradient: "from-yellow-400 to-yellow-600", label: "Meme Lord", minXp: 2000, maxXp: 10000 },
 };
 
-const socialIcons: Record<string, typeof SiTwitter> = {
-  twitter: SiTwitter,
-  instagram: SiInstagram,
-  tiktok: SiTiktok,
-  youtube: SiYoutube,
-  discord: SiDiscord,
+const socialIcons: Record<string, LucideIcon> = {
+  twitter: Share2,
+  instagram: Share2,
+  tiktok: Share2,
+  youtube: Share2,
+  discord: Share2,
+  website: Globe,
 };
 
 function FollowersSheet({ userId, type, count }: { userId: string; type: "followers" | "following"; count: number }) {
