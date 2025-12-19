@@ -11,6 +11,13 @@ export * from "./models/auth";
 export const USER_LEVELS = ["newbie", "meme_fan", "meme_master", "meme_lord"] as const;
 export type UserLevel = typeof USER_LEVELS[number];
 
+// Profile frame types based on achievements
+export const PROFILE_FRAMES = [
+  "none", "bronze", "silver", "gold", "diamond", "rainbow", 
+  "fire", "ice", "nature", "cosmic", "legendary"
+] as const;
+export type ProfileFrame = typeof PROFILE_FRAMES[number];
+
 // User profiles (extends auth user with additional info)
 export const userProfiles = pgTable("user_profiles", {
   userId: varchar("user_id").primaryKey(),
@@ -19,6 +26,11 @@ export const userProfiles = pgTable("user_profiles", {
   avatarUrl: varchar("avatar_url"),
   xp: integer("xp").default(0),
   level: varchar("level").default("newbie"),
+  isVerified: boolean("is_verified").default(false),
+  profileFrame: varchar("profile_frame").default("none"),
+  profileColor: varchar("profile_color"),
+  isCreatorOfMonth: boolean("is_creator_of_month").default(false),
+  creatorOfMonthDate: timestamp("creator_of_month_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -352,3 +364,32 @@ export function getXpProgress(xp: number, level: UserLevel): number {
   const xpForLevel = xpNeeded - currentThreshold;
   return Math.min(100, Math.floor((xpInLevel / xpForLevel) * 100));
 }
+
+// Meme Favorites (for pinboard)
+export const memeFavorites = pgTable("meme_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  memeId: varchar("meme_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueFavorite: uniqueIndex("unique_meme_favorite_idx").on(table.userId, table.memeId),
+}));
+
+export const insertMemeFavoriteSchema = createInsertSchema(memeFavorites).omit({ id: true, createdAt: true });
+export type InsertMemeFavorite = z.infer<typeof insertMemeFavoriteSchema>;
+export type MemeFavorite = typeof memeFavorites.$inferSelect;
+
+// Frame unlock requirements
+export const FRAME_REQUIREMENTS: Record<ProfileFrame, { type: string; value: number; description: string }> = {
+  none: { type: "default", value: 0, description: "Default frame" },
+  bronze: { type: "badges", value: 1, description: "Unlock 1 badge" },
+  silver: { type: "badges", value: 3, description: "Unlock 3 badges" },
+  gold: { type: "badges", value: 5, description: "Unlock 5 badges" },
+  diamond: { type: "badges", value: 10, description: "Unlock 10 badges" },
+  rainbow: { type: "level", value: 2, description: "Reach Meme Fan level" },
+  fire: { type: "likes", value: 100, description: "Receive 100 likes" },
+  ice: { type: "memes", value: 20, description: "Upload 20 memes" },
+  nature: { type: "followers", value: 50, description: "Get 50 followers" },
+  cosmic: { type: "level", value: 4, description: "Reach Meme Lord level" },
+  legendary: { type: "contest_wins", value: 1, description: "Win a contest" },
+};
