@@ -1,8 +1,11 @@
 import { Instagram, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/hooks/use-language";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
 
 export function HeroSection() {
+  const { t } = useLanguage();
+
   const scrollToMemes = () => {
     const element = document.querySelector("#memes");
     if (element) {
@@ -33,7 +36,7 @@ export function HeroSection() {
         </div>
 
         <h1 className="font-bold text-4xl sm:text-5xl md:text-7xl mb-4 tracking-tight">
-          Welcome to{" "}
+          {t.home.heroTitle.split("MemeVerse")[0]}
           <span className="bg-gradient-to-r from-primary via-chart-2 to-primary bg-clip-text text-transparent">
             MemeVerse
           </span>
@@ -44,8 +47,7 @@ export function HeroSection() {
         </p>
 
         <p className="text-base md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto font-serif">
-          Your Daily Dose of Internet Culture. Fresh memes, trending content, and
-          endless entertainment delivered straight to your feed.
+          {t.home.heroSubtitle}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -56,7 +58,7 @@ export function HeroSection() {
             data-testid="button-hero-follow"
           >
             <Instagram className="h-5 w-5" />
-            Follow on Instagram
+            {t.nav.followOnInstagram}
           </Button>
           <Button
             size="lg"
@@ -65,7 +67,7 @@ export function HeroSection() {
             onClick={scrollToMemes}
             data-testid="button-hero-explore"
           >
-            Explore Memes
+            {t.home.exploreMemes}
             <ArrowDown className="h-4 w-4" />
           </Button>
         </div>
@@ -73,15 +75,15 @@ export function HeroSection() {
         <div className="mt-16 flex justify-center gap-8 md:gap-16 text-center">
           <div data-testid="stat-followers">
             <p className="text-3xl md:text-4xl font-bold text-foreground">50K+</p>
-            <p className="text-sm md:text-base text-muted-foreground">Followers</p>
+            <p className="text-sm md:text-base text-muted-foreground">{t.profile.followers}</p>
           </div>
           <div data-testid="stat-posts">
             <p className="text-3xl md:text-4xl font-bold text-foreground">1.2K</p>
-            <p className="text-sm md:text-base text-muted-foreground">Posts</p>
+            <p className="text-sm md:text-base text-muted-foreground">{t.profile.memes}</p>
           </div>
           <div data-testid="stat-engagement">
             <p className="text-3xl md:text-4xl font-bold text-foreground">98%</p>
-            <p className="text-sm md:text-base text-muted-foreground">Engagement</p>
+            <p className="text-sm md:text-base text-muted-foreground">{t.home.engagement}</p>
           </div>
         </div>
       </div>

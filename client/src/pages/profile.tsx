@@ -3,18 +3,19 @@ import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
+import { EditProfileModal } from "@/components/edit-profile-modal";
+import { MemeDetailModal } from "@/components/meme-detail-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Share2, UserPlus, UserMinus, Edit2, Image, Trash2, Star, Flame, Medal, Crown, Award, Trophy } from "lucide-react";
+import { Heart, Share2, UserPlus, UserMinus, Edit2, Image, Trash2, Star, Flame, Medal, Crown, Award, Play } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Meme, UserProfile, Badge as BadgeType, UserBadge } from "@shared/schema";
 
@@ -29,8 +30,9 @@ export default function Profile() {
   const params = useParams<{ userId?: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ bio: "", displayName: "" });
+  const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
   const userId = params.userId || user?.id;
   const isOwnProfile = user?.id === userId;
@@ -81,28 +83,6 @@ export default function Profile() {
     enabled: !!userId,
   });
 
-  useEffect(() => {
-    if (profile) {
-      setEditForm({
-        bio: profile.bio || "",
-        displayName: profile.displayName || "",
-      });
-    }
-  }, [profile]);
-
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: { bio: string; displayName: string }) => {
-      return apiRequest("PUT", "/api/profile", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profile", userId] });
-      setIsEditing(false);
-      toast({ title: "Profile updated!" });
-    },
-    onError: () => {
-      toast({ title: "Failed to update profile", variant: "destructive" });
-    },
-  });
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -307,39 +287,10 @@ export default function Profile() {
                     );
                   })()}
 
-                  {isEditing ? (
-                    <div className="mt-4 space-y-3">
-                      <Input
-                        placeholder="Display Name"
-                        value={editForm.displayName}
-                        onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                        data-testid="input-display-name"
-                      />
-                      <Textarea
-                        placeholder="Write something about yourself..."
-                        value={editForm.bio}
-                        onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                        className="resize-none"
-                        rows={3}
-                        data-testid="textarea-bio"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => updateProfileMutation.mutate(editForm)}
-                          disabled={updateProfileMutation.isPending}
-                          data-testid="button-save-profile"
-                        >
-                          Save
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsEditing(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : profile?.bio ? (
+                  {profile?.bio ? (
                     <p className="mt-4 text-muted-foreground">{profile.bio}</p>
                   ) : isOwnProfile ? (
-                    <p className="mt-4 text-muted-foreground italic">Add a bio to tell others about yourself</p>
+                    <p className="mt-4 text-muted-foreground italic">{t.profile.bio}</p>
                   ) : null}
                 </div>
               </div>
@@ -367,39 +318,61 @@ export default function Profile() {
                 </div>
               ) : memesList.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {memesList.map((meme) => (
-                    <Card key={meme.id} className="relative overflow-hidden group" data-testid={`card-user-meme-${meme.id}`}>
-                      <img
-                        src={meme.imageUrl}
-                        alt={meme.title}
-                        className="w-full aspect-square object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <span className="text-white flex items-center gap-1">
-                          <Heart className="h-4 w-4" />
-                          {formatNumber(meme.likes || 0)}
-                        </span>
-                        <span className="text-white flex items-center gap-1">
-                          <Share2 className="h-4 w-4" />
-                          {formatNumber(meme.shares || 0)}
-                        </span>
-                        {isOwnProfile && (
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2"
-                            onClick={() => deleteMutation.mutate(meme.id)}
-                            data-testid={`button-delete-meme-${meme.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                  {memesList.map((meme) => {
+                    const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i);
+                    return (
+                      <Card 
+                        key={meme.id} 
+                        className="relative overflow-hidden group cursor-pointer" 
+                        data-testid={`card-user-meme-${meme.id}`}
+                        onClick={() => setSelectedMeme(meme)}
+                      >
+                        {isVideo ? (
+                          <div className="relative w-full aspect-square bg-muted flex items-center justify-center">
+                            <video
+                              src={meme.imageUrl}
+                              className="w-full aspect-square object-cover"
+                              muted
+                            />
+                            <Play className="absolute h-10 w-10 text-white drop-shadow-lg" />
+                          </div>
+                        ) : (
+                          <img
+                            src={meme.imageUrl}
+                            alt={meme.title}
+                            className="w-full aspect-square object-cover"
+                          />
                         )}
-                      </div>
-                      {meme.featured && (
-                        <Badge className="absolute top-2 left-2 text-xs">Featured</Badge>
-                      )}
-                    </Card>
-                  ))}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                          <span className="text-white flex items-center gap-1">
+                            <Heart className="h-4 w-4" />
+                            {formatNumber(meme.likes || 0)}
+                          </span>
+                          <span className="text-white flex items-center gap-1">
+                            <Share2 className="h-4 w-4" />
+                            {formatNumber(meme.shares || 0)}
+                          </span>
+                          {isOwnProfile && (
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteMutation.mutate(meme.id);
+                              }}
+                              data-testid={`button-delete-meme-${meme.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        {meme.featured && (
+                          <Badge className="absolute top-2 left-2 text-xs">Featured</Badge>
+                        )}
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -437,6 +410,19 @@ export default function Profile() {
         </div>
       </main>
       <Footer />
+
+      <EditProfileModal
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        profile={profile || null}
+        userId={userId || ""}
+      />
+
+      <MemeDetailModal
+        meme={selectedMeme}
+        isOpen={!!selectedMeme}
+        onClose={() => setSelectedMeme(null)}
+      />
     </div>
   );
 }

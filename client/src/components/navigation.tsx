@@ -11,22 +11,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageSwitcher } from "./language-switcher";
 import { UserSearch } from "./user-search";
 import { NotificationsDropdown } from "./notifications-dropdown";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
-
-const navLinks = [
-  { name: "About", href: "#about" },
-  { name: "Memes", href: "#memes" },
-  { name: "Leaderboard", href: "/leaderboard" },
-  { name: "Contests", href: "/contests" },
-];
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isLoading, logout } = useAuth();
+  const { t } = useLanguage();
+
+  const navLinks = [
+    { name: t.nav.about, href: "#about" },
+    { name: t.nav.memes, href: "#memes" },
+    { name: t.nav.leaderboard, href: "/leaderboard" },
+    { name: t.nav.contests, href: "/contests" },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -94,7 +97,7 @@ export function Navigation() {
             {user && (
               <Link href="/upload">
                 <Button variant="ghost" data-testid="link-nav-upload">
-                  Upload
+                  {t.nav.upload}
                 </Button>
               </Link>
             )}
@@ -105,6 +108,7 @@ export function Navigation() {
               <UserSearch />
             </div>
             {user && <NotificationsDropdown />}
+            <LanguageSwitcher />
             <ThemeToggle />
             
             {isLoading ? (
@@ -123,13 +127,13 @@ export function Navigation() {
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-profile">
                       <User className="h-4 w-4" />
-                      My Profile
+                      {t.nav.myProfile}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/upload" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-upload">
                       <Upload className="h-4 w-4" />
-                      Upload Meme
+                      {t.nav.uploadMeme}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -139,7 +143,7 @@ export function Navigation() {
                     data-testid="button-logout"
                   >
                     <LogOut className="h-4 w-4" />
-                    Logout
+                    {t.nav.logout}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -150,7 +154,7 @@ export function Navigation() {
                 data-testid="button-login"
               >
                 <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">Login</span>
+                <span className="hidden sm:inline">{t.nav.login}</span>
               </Button>
             )}
 
@@ -161,7 +165,7 @@ export function Navigation() {
               data-testid="button-follow-instagram"
             >
               <Instagram className="h-4 w-4" />
-              <span className="hidden md:inline">Follow</span>
+              <span className="hidden md:inline">{t.nav.follow}</span>
             </Button>
             
             <Button
@@ -211,13 +215,13 @@ export function Navigation() {
                   <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <User className="h-4 w-4" />
-                      My Profile
+                      {t.nav.myProfile}
                     </Button>
                   </Link>
                   <Link href="/upload" onClick={() => setIsMobileMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
                       <Upload className="h-4 w-4" />
-                      Upload Meme
+                      {t.nav.uploadMeme}
                     </Button>
                   </Link>
                 </>
@@ -228,7 +232,7 @@ export function Navigation() {
                 data-testid="button-mobile-follow-instagram"
               >
                 <Instagram className="h-4 w-4" />
-                Follow on Instagram
+                {t.nav.followOnInstagram}
               </Button>
             </div>
           </div>
