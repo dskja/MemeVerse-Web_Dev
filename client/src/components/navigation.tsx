@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy, Globe, Home, Info, ImageIcon, Crown } from "lucide-react";
+import { Menu, X, Instagram, User, Upload, LogOut, LogIn, Trophy, Globe, Home, Info, ImageIcon, Crown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,6 +19,8 @@ import { UserSearch } from "./user-search";
 import { NotificationsDropdown } from "./notifications-dropdown";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
+import { useQuery } from "@tanstack/react-query";
+import type { UserProfile } from "@shared/schema";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
 
 export function Navigation() {
@@ -58,8 +60,18 @@ export function Navigation() {
     setIsMobileMenuOpen(false);
   };
 
-  const displayName = user?.firstName || "User";
-  const avatarUrl = user?.profileImageUrl;
+  const { data: profile } = useQuery<UserProfile>({
+    queryKey: ["/api/profile", user?.id],
+    enabled: !!user?.id,
+  });
+  
+  const displayName = profile?.displayName || user?.firstName || "User";
+  const username = profile?.displayName 
+    ? `@${profile.displayName.toLowerCase().replace(/[^a-z0-9]/g, "")}`
+    : user?.id 
+      ? `@user${user.id.slice(-4)}`
+      : "";
+  const avatarUrl = profile?.avatarUrl || user?.profileImageUrl;
 
   return (
     <header
@@ -139,7 +151,7 @@ export function Navigation() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{displayName}</p>
-                        <p className="text-xs text-muted-foreground">@{displayName.toLowerCase().replace(/\s/g, "")}</p>
+                        <p className="text-xs text-muted-foreground">{username}</p>
                       </div>
                     </div>
                   </div>
@@ -182,22 +194,24 @@ export function Navigation() {
                         <span className="font-medium">{t.nav.language}</span>
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
-                        <DropdownMenuSubContent className="min-w-32">
+                        <DropdownMenuSubContent sideOffset={8} className="min-w-36">
                           <DropdownMenuItem
                             onClick={() => setLanguage("en")}
                             className={`gap-2 ${language === "en" ? "bg-primary/10 text-primary" : ""}`}
                             data-testid="button-lang-en"
                           >
-                            <span className="text-lg">🇺🇸</span>
+                            <span className="font-bold text-xs w-6 h-6 rounded-md bg-muted flex items-center justify-center">EN</span>
                             English
+                            {language === "en" && <Check className="h-4 w-4 ml-auto" />}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => setLanguage("de")}
                             className={`gap-2 ${language === "de" ? "bg-primary/10 text-primary" : ""}`}
                             data-testid="button-lang-de"
                           >
-                            <span className="text-lg">🇩🇪</span>
+                            <span className="font-bold text-xs w-6 h-6 rounded-md bg-muted flex items-center justify-center">DE</span>
                             Deutsch
+                            {language === "de" && <Check className="h-4 w-4 ml-auto" />}
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuPortal>
