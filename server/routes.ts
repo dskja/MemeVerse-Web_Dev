@@ -545,6 +545,128 @@ export async function registerRoutes(
     }
   });
 
+  // Profile Preferences - Get
+  app.get("/api/profile/:userId/preferences", async (req, res) => {
+    try {
+      const prefs = await storage.getProfilePreferences(req.params.userId);
+      res.json(prefs || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch preferences" });
+    }
+  });
+
+  // Profile Preferences - Update (protected)
+  app.put("/api/profile/preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prefs = await storage.upsertProfilePreferences({ ...req.body, userId });
+      res.json(prefs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update preferences" });
+    }
+  });
+
+  // Social Links - Get
+  app.get("/api/profile/:userId/social-links", async (req, res) => {
+    try {
+      const links = await storage.getSocialLinks(req.params.userId);
+      res.json(links);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch social links" });
+    }
+  });
+
+  // Social Links - Upsert (protected)
+  app.post("/api/profile/social-links", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const link = await storage.upsertSocialLink({ ...req.body, userId });
+      res.json(link);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save social link" });
+    }
+  });
+
+  // Social Links - Delete (protected)
+  app.delete("/api/profile/social-links/:platform", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteSocialLink(userId, req.params.platform);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete social link" });
+    }
+  });
+
+  // Profile Stats - Get
+  app.get("/api/profile/:userId/stats", async (req, res) => {
+    try {
+      const stats = await storage.getProfileStats(req.params.userId);
+      res.json(stats || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile stats" });
+    }
+  });
+
+  // XP Events - Get recent for user
+  app.get("/api/profile/:userId/xp-events", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const events = await storage.getXpEvents(req.params.userId, limit);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch XP events" });
+    }
+  });
+
+  // Followers with profiles - Get followers list
+  app.get("/api/profile/:userId/followers", async (req, res) => {
+    try {
+      const followersWithProfiles = await storage.getFollowersWithProfiles(req.params.userId);
+      res.json(followersWithProfiles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch followers" });
+    }
+  });
+
+  // Following with profiles - Get following list
+  app.get("/api/profile/:userId/following", async (req, res) => {
+    try {
+      const followingWithProfiles = await storage.getFollowingWithProfiles(req.params.userId);
+      res.json(followingWithProfiles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch following" });
+    }
+  });
+
+  // Profile Overview - Aggregated data for profile page
+  app.get("/api/profile/:userId/overview", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const [profile, memesList, counts, userBadgesList, socialLinksList, stats] = await Promise.all([
+        storage.getProfile(userId),
+        storage.getMemesByUser(userId),
+        Promise.all([storage.getFollowerCount(userId), storage.getFollowingCount(userId)]),
+        storage.getUserBadges(userId),
+        storage.getSocialLinks(userId),
+        storage.getProfileStats(userId),
+      ]);
+      
+      res.json({
+        profile,
+        memeCount: memesList.length,
+        followerCount: counts[0],
+        followingCount: counts[1],
+        badges: userBadgesList,
+        socialLinks: socialLinksList,
+        stats,
+        totalLikes: memesList.reduce((sum, m) => sum + (m.likes || 0), 0),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile overview" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", isAuthenticated, async (req: any, res) => {
     try {

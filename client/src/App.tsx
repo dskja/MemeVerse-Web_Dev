@@ -13,6 +13,7 @@ import MemeDetail from "@/pages/meme-detail";
 import Contests from "@/pages/contests";
 import AboutPage from "@/pages/about";
 import MemesPage from "@/pages/memes";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/contests" component={Contests} />
       <Route path="/about" component={AboutPage} />
       <Route path="/memes" component={MemesPage} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
