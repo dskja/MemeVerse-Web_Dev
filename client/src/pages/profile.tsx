@@ -13,10 +13,12 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
-  Heart, UserPlus, UserMinus, Image, Trash2, Star, Flame, Medal, Crown, 
+  Heart, UserPlus, UserMinus, Image, Trash2, Star as StarIcon, Flame, Medal, Crown, 
   Award, Play, Upload, MessageCircle, Users, Settings, 
-  Zap, TrendingUp, Grid3X3, Trophy, Share2, Globe, type LucideIcon
+  Zap, TrendingUp, Grid3X3, Trophy, Share2, Globe, BadgeCheck, type LucideIcon
 } from "lucide-react";
+import { FramedAvatar } from "@/components/framed-avatar";
+import type { ProfileFrame } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -171,6 +173,16 @@ export default function Profile() {
     enabled: !!userId && !isOwnProfile && !!user,
   });
 
+  const { data: favorites = [], isLoading: favoritesLoading } = useQuery<Meme[]>({
+    queryKey: ["/api/favorites"],
+    queryFn: async () => {
+      const res = await fetch("/api/favorites", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isOwnProfile && !!user,
+  });
+
   const followMutation = useMutation({
     mutationFn: async () => apiRequest("POST", `/api/follow/${userId}`, {}),
     onSuccess: () => {
@@ -276,12 +288,15 @@ export default function Profile() {
             <div className="px-5 pb-5">
               {/* Avatar overlapping banner */}
               <div className="flex items-end gap-4 -mt-10 mb-4">
-                <Avatar className="h-20 w-20 ring-4 ring-card">
-                  <AvatarImage src={avatarUrl || undefined} alt={displayName} />
-                  <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-primary/5">
-                    {displayName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <FramedAvatar
+                  src={avatarUrl}
+                  fallback={displayName.charAt(0).toUpperCase()}
+                  frame={profile?.profileFrame as ProfileFrame}
+                  isVerified={profile?.isVerified ?? false}
+                  isCreatorOfMonth={profile?.isCreatorOfMonth ?? false}
+                  profileColor={profile?.profileColor}
+                  size="lg"
+                />
                 
                 <div className="flex-1 flex justify-end gap-2 pb-1">
                   {isOwnProfile ? (
@@ -322,7 +337,18 @@ export default function Profile() {
               
               {/* Name and Level */}
               <div className="mb-4">
-                <h1 className="text-xl font-bold">{displayName}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold">{displayName}</h1>
+                  {profile?.isVerified && (
+                    <BadgeCheck className="h-5 w-5 text-blue-500" data-testid="icon-verified" />
+                  )}
+                </div>
+                {profile?.isCreatorOfMonth && (
+                  <Badge variant="outline" className="gap-1 text-yellow-600 border-yellow-500/50 bg-yellow-500/10 mt-1">
+                    <Crown className="h-3 w-3" />
+                    {t.profile?.creatorOfMonth || "Creator of the Month"}
+                  </Badge>
+                )}
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <Badge variant="outline" className={`gap-1 ${config.color}`}>
                     <LevelIcon className="h-3 w-3" />
@@ -396,18 +422,24 @@ export default function Profile() {
 
           {/* Content Tabs */}
           <Tabs defaultValue="memes" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-muted/50">
-              <TabsTrigger value="memes" className="gap-1.5 rounded-lg text-xs">
+            <TabsList className={`w-full grid h-11 rounded-xl bg-muted/50 ${isOwnProfile ? "grid-cols-4" : "grid-cols-3"}`}>
+              <TabsTrigger value="memes" className="gap-1.5 rounded-lg text-xs" data-testid="tab-memes">
                 <Grid3X3 className="h-4 w-4" />
-                {t.memes?.title || "Memes"}
+                <span className="hidden sm:inline">{t.memes?.title || "Memes"}</span>
               </TabsTrigger>
-              <TabsTrigger value="badges" className="gap-1.5 rounded-lg text-xs">
+              {isOwnProfile && (
+                <TabsTrigger value="favorites" className="gap-1.5 rounded-lg text-xs" data-testid="tab-favorites">
+                  <StarIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t.profile?.favorites || "Favorites"}</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="badges" className="gap-1.5 rounded-lg text-xs" data-testid="tab-badges">
                 <Award className="h-4 w-4" />
-                {t.profile?.badges || "Badges"}
+                <span className="hidden sm:inline">{t.profile?.badges || "Badges"}</span>
               </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-1.5 rounded-lg text-xs">
+              <TabsTrigger value="activity" className="gap-1.5 rounded-lg text-xs" data-testid="tab-activity">
                 <TrendingUp className="h-4 w-4" />
-                {t.profile?.activity || "Activity"}
+                <span className="hidden sm:inline">{t.profile?.activity || "Activity"}</span>
               </TabsTrigger>
             </TabsList>
             
@@ -480,6 +512,60 @@ export default function Profile() {
                 </Card>
               )}
             </TabsContent>
+
+            {isOwnProfile && (
+              <TabsContent value="favorites" className="mt-3">
+                {favoritesLoading ? (
+                  <div className="grid grid-cols-3 gap-0.5">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <Skeleton key={i} className="aspect-square" />
+                    ))}
+                  </div>
+                ) : favorites.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-0.5">
+                    {favorites.map((meme) => {
+                      const isVideo = meme.imageUrl?.match(/\.(mp4|webm|mov)$/i);
+                      return (
+                        <div 
+                          key={meme.id}
+                          className="relative aspect-square overflow-hidden cursor-pointer group bg-muted"
+                          onClick={() => setSelectedMeme(meme)}
+                          data-testid={`card-favorite-meme-${meme.id}`}
+                        >
+                          {isVideo ? (
+                            <>
+                              <video src={meme.imageUrl} className="w-full h-full object-cover" muted />
+                              <Play className="absolute inset-0 m-auto h-8 w-8 text-white drop-shadow-lg" />
+                            </>
+                          ) : (
+                            <img src={meme.imageUrl} alt={meme.title} className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                            <span className="text-white text-sm flex items-center gap-1">
+                              <Heart className="h-4 w-4" />
+                              {meme.likes || 0}
+                            </span>
+                          </div>
+                          <StarIcon className="absolute top-1 left-1 h-4 w-4 text-yellow-400 fill-yellow-400 drop-shadow-md" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="py-12 text-center">
+                      <StarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground text-sm">
+                        {t.profile?.noFavorites || "No favorites yet"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t.profile?.addFavorites || "Star memes you like to save them here"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="badges" className="mt-3">
               {overview?.badges && overview.badges.length > 0 ? (

@@ -13,22 +13,48 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ArrowLeft, User, Bell, Globe, Shield, Camera, Save, 
-  Twitter, Instagram, Youtube, MessageCircle, Link as LinkIcon
+  Twitter, Instagram, Youtube, MessageCircle, Link as LinkIcon, 
+  Video, Share2, Palette, Frame, Check, type LucideIcon
 } from "lucide-react";
-import { SiTiktok, SiDiscord } from "react-icons/si";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { UserProfile, ProfilePreferences, SocialLink } from "@shared/schema";
+import type { UserProfile, ProfilePreferences, SocialLink, ProfileFrame } from "@shared/schema";
+import { FramedAvatar } from "@/components/framed-avatar";
 
-const socialPlatforms = [
+const socialPlatforms: { id: string; label: string; icon: LucideIcon; placeholder: string }[] = [
   { id: "twitter", label: "Twitter / X", icon: Twitter, placeholder: "https://twitter.com/username" },
   { id: "instagram", label: "Instagram", icon: Instagram, placeholder: "https://instagram.com/username" },
-  { id: "tiktok", label: "TikTok", icon: SiTiktok, placeholder: "https://tiktok.com/@username" },
+  { id: "tiktok", label: "TikTok", icon: Video, placeholder: "https://tiktok.com/@username" },
   { id: "youtube", label: "YouTube", icon: Youtube, placeholder: "https://youtube.com/@username" },
-  { id: "discord", label: "Discord", icon: SiDiscord, placeholder: "discord_username" },
+  { id: "discord", label: "Discord", icon: Share2, placeholder: "discord_username" },
   { id: "website", label: "Website", icon: LinkIcon, placeholder: "https://yourwebsite.com" },
+];
+
+const frameOptions: { id: ProfileFrame; label: string; unlockText: string }[] = [
+  { id: "none", label: "None", unlockText: "" },
+  { id: "bronze", label: "Bronze", unlockText: "1 badge" },
+  { id: "silver", label: "Silver", unlockText: "3 badges" },
+  { id: "gold", label: "Gold", unlockText: "5 badges" },
+  { id: "diamond", label: "Diamond", unlockText: "10 badges" },
+  { id: "rainbow", label: "Rainbow", unlockText: "Meme Fan level" },
+  { id: "fire", label: "Fire", unlockText: "100 likes" },
+  { id: "ice", label: "Ice", unlockText: "20 memes" },
+  { id: "nature", label: "Nature", unlockText: "50 followers" },
+  { id: "cosmic", label: "Cosmic", unlockText: "Meme Lord level" },
+  { id: "legendary", label: "Legendary", unlockText: "Contest win" },
+];
+
+const colorOptions = [
+  { id: null, label: "Default", value: "" },
+  { id: "#ec4899", label: "Pink", value: "#ec4899" },
+  { id: "#8b5cf6", label: "Purple", value: "#8b5cf6" },
+  { id: "#3b82f6", label: "Blue", value: "#3b82f6" },
+  { id: "#10b981", label: "Green", value: "#10b981" },
+  { id: "#f59e0b", label: "Amber", value: "#f59e0b" },
+  { id: "#ef4444", label: "Red", value: "#ef4444" },
+  { id: "#06b6d4", label: "Cyan", value: "#06b6d4" },
 ];
 
 export default function Settings() {
@@ -53,6 +79,8 @@ export default function Settings() {
   
   const [socialForms, setSocialForms] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFrame, setSelectedFrame] = useState<ProfileFrame>("none");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile", user?.id],
@@ -65,6 +93,8 @@ export default function Settings() {
           bio: data.bio || "",
           avatarUrl: data.avatarUrl || "",
         });
+        setSelectedFrame(data.profileFrame || "none");
+        setSelectedColor(data.profileColor || null);
       }
       return data;
     },
@@ -125,6 +155,26 @@ export default function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile", user?.id, "preferences"] });
       toast({ title: "Preferences saved" });
+    },
+  });
+
+  const updateFrameMutation = useMutation({
+    mutationFn: async (frame: ProfileFrame) => {
+      return apiRequest("PATCH", "/api/profile/frame", { frame });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile", user?.id] });
+      toast({ title: t.settings?.frameSaved || "Profile frame updated" });
+    },
+  });
+
+  const updateColorMutation = useMutation({
+    mutationFn: async (color: string | null) => {
+      return apiRequest("PATCH", "/api/profile/color", { color });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile", user?.id] });
+      toast({ title: t.settings?.colorSaved || "Profile color updated" });
     },
   });
 
@@ -267,6 +317,89 @@ export default function Settings() {
                   <Save className="h-4 w-4" />
                   {updateProfileMutation.isPending ? "Saving..." : t.settings?.saveProfile || "Save Profile"}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Frame className="h-5 w-5 text-primary" />
+                {t.settings?.customization || "Profile Customization"}
+              </CardTitle>
+              <CardDescription>
+                {t.settings?.customizationDescription || "Personalize your profile appearance"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex justify-center">
+                <FramedAvatar
+                  src={profileForm.avatarUrl || profile?.avatarUrl}
+                  fallback={(profileForm.displayName || user?.firstName || "U").charAt(0).toUpperCase()}
+                  frame={selectedFrame}
+                  profileColor={selectedColor}
+                  size="lg"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label>{t.settings?.profileFrame || "Profile Frame"}</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {frameOptions.map((frame) => (
+                    <button
+                      key={frame.id}
+                      onClick={() => {
+                        setSelectedFrame(frame.id);
+                        updateFrameMutation.mutate(frame.id);
+                      }}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${
+                        selectedFrame === frame.id
+                          ? "border-primary bg-primary/10"
+                          : "border-transparent bg-muted hover-elevate"
+                      }`}
+                      data-testid={`button-frame-${frame.id}`}
+                    >
+                      <FramedAvatar
+                        fallback="M"
+                        frame={frame.id}
+                        size="sm"
+                      />
+                      <span className="text-xs font-medium">{frame.label}</span>
+                      {selectedFrame === frame.id && (
+                        <Check className="h-3 w-3 text-primary" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label>{t.settings?.profileColor || "Profile Color"}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color.value || "default"}
+                      onClick={() => {
+                        setSelectedColor(color.value || null);
+                        updateColorMutation.mutate(color.value || null);
+                      }}
+                      className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
+                        selectedColor === color.value || (!selectedColor && !color.value)
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-transparent"
+                      }`}
+                      style={color.value ? { backgroundColor: color.value } : undefined}
+                      data-testid={`button-color-${color.label.toLowerCase()}`}
+                    >
+                      {!color.value && (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-muted to-muted-foreground/20" />
+                      )}
+                      {(selectedColor === color.value || (!selectedColor && !color.value)) && (
+                        <Check className="h-4 w-4 text-white drop-shadow-md" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Heart, MessageCircle, Share2, Send, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from "lucide-react";
+import { Heart, MessageCircle, Share2, Send, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Star } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -25,6 +25,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
   const { t } = useLanguage();
   const [commentText, setCommentText] = useState("");
   const [liked, setLiked] = useState(false);
+  const [favorited, setFavorited] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,22 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
     enabled: !!meme?.id && isOpen,
   });
 
+  const { data: isFavorite } = useQuery<{ isFavorite: boolean }>({
+    queryKey: ["/api/favorites", meme?.id, "check"],
+    queryFn: async () => {
+      const res = await fetch(`/api/favorites/${meme?.id}/check`, { credentials: "include" });
+      if (!res.ok) return { isFavorite: false };
+      return res.json();
+    },
+    enabled: !!meme?.id && isOpen && !!user,
+  });
+
+  useEffect(() => {
+    if (isFavorite?.isFavorite !== undefined) {
+      setFavorited(isFavorite.isFavorite);
+    }
+  }, [isFavorite]);
+
   const likeMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", `/api/memes/${meme?.id}/like`, {});
@@ -57,6 +74,42 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
       queryClient.invalidateQueries({ queryKey: ["/api/memes"] });
     },
   });
+
+  const addFavoriteMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/favorites/${meme?.id}`, {});
+    },
+    onSuccess: () => {
+      setFavorited(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites", meme?.id, "check"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+      toast({ title: t.memes?.addToFavorites || "Added to favorites" });
+    },
+  });
+
+  const removeFavoriteMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/favorites/${meme?.id}`, {});
+    },
+    onSuccess: () => {
+      setFavorited(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites", meme?.id, "check"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+      toast({ title: t.memes?.removeFromFavorites || "Removed from favorites" });
+    },
+  });
+
+  const handleToggleFavorite = () => {
+    if (!user) {
+      toast({ title: "Please login to add favorites" });
+      return;
+    }
+    if (favorited) {
+      removeFavoriteMutation.mutate();
+    } else {
+      addFavoriteMutation.mutate();
+    }
+  };
 
   const commentMutation = useMutation({
     mutationFn: async (body: string) => {
@@ -274,22 +327,33 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
               )}
             </DialogHeader>
 
-            <div className="flex items-center gap-4 p-4 border-b">
+            <div className="flex items-center gap-2 p-4 border-b flex-wrap">
               <Button
                 variant="ghost"
                 size="sm"
                 className={`gap-2 ${liked ? "text-red-500" : ""}`}
                 onClick={() => user && likeMutation.mutate()}
                 disabled={!user}
+                data-testid="button-like-meme"
               >
                 <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
                 {(meme.likes || 0) + (liked ? 1 : 0)}
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="button-comments-count">
                 <MessageCircle className="h-5 w-5" />
                 {comments.length}
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2" onClick={handleShare}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`gap-2 ${favorited ? "text-yellow-500" : ""}`}
+                onClick={handleToggleFavorite}
+                disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                data-testid="button-favorite-meme"
+              >
+                <Star className={`h-5 w-5 ${favorited ? "fill-current" : ""}`} />
+              </Button>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={handleShare} data-testid="button-share-meme">
                 <Share2 className="h-5 w-5" />
               </Button>
             </div>
