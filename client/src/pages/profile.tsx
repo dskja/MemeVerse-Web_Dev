@@ -43,59 +43,6 @@ const levelConfig: Record<string, { icon: typeof Star; color: string; bgGradient
   meme_lord: { icon: Crown, color: "text-yellow-500", bgGradient: "from-yellow-400 to-yellow-600", label: "Meme Lord", minXp: 2000, maxXp: 10000 },
 };
 
-function XpProgressRing({ xp, level }: { xp: number; level: string }) {
-  const config = levelConfig[level] || levelConfig.newbie;
-  const nextLevelKey = level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : level === "meme_master" ? "meme_lord" : null;
-  const nextConfig = nextLevelKey ? levelConfig[nextLevelKey] : null;
-  
-  const xpInLevel = xp - config.minXp;
-  const xpNeeded = nextConfig ? nextConfig.minXp - config.minXp : 0;
-  const progress = nextConfig ? Math.min(100, (xpInLevel / xpNeeded) * 100) : 100;
-  const circumference = 2 * Math.PI * 45;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-  
-  const LevelIcon = config.icon;
-  
-  return (
-    <div className="relative w-28 h-28">
-      <svg className="w-28 h-28 transform -rotate-90">
-        <circle
-          cx="56"
-          cy="56"
-          r="45"
-          stroke="currentColor"
-          strokeWidth="8"
-          fill="none"
-          className="text-muted/30"
-        />
-        <circle
-          cx="56"
-          cy="56"
-          r="45"
-          stroke="url(#xpGradient)"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          className="transition-all duration-500"
-        />
-        <defs>
-          <linearGradient id="xpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(326, 80%, 60%)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <LevelIcon className={`h-6 w-6 ${config.color}`} />
-        <span className="text-lg font-bold">{xp}</span>
-        <span className="text-xs text-muted-foreground">XP</span>
-      </div>
-    </div>
-  );
-}
-
 function FollowersSheet({ userId, type, count }: { userId: string; type: "followers" | "following"; count: number }) {
   const { data: list = [], isLoading } = useQuery<FollowerWithProfile[]>({
     queryKey: ["/api/profile", userId, type],
@@ -374,47 +321,22 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="bg-card rounded-2xl border shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <XpProgressRing xp={profile?.xp || 0} level={level} />
-              <div className="flex-1">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  {t.tabs.xpAndLevel}
-                </h3>
-                {level !== "meme_lord" ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t.xp.progressTo} {levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.label}
-                    </p>
-                    <p className="text-sm mt-1">
-                      <span className="font-bold text-primary">
-                        {(levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 0) - (profile?.xp || 0)}
-                      </span> {t.xp.xpNeeded}
-                    </p>
-                  </>
-                ) : (
-                  <Badge className="mt-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">
-                    <Crown className="h-3 w-3 mr-1" />
-                    {t.xp.maxLevel}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
           <Tabs defaultValue="memes" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-12 rounded-xl">
-              <TabsTrigger value="memes" className="gap-2 rounded-lg data-[state=active]:shadow-sm">
+            <TabsList className="w-full grid grid-cols-4 h-12 rounded-xl">
+              <TabsTrigger value="memes" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
                 <Image className="h-4 w-4" />
                 <span className="hidden sm:inline">Memes</span>
               </TabsTrigger>
-              <TabsTrigger value="badges" className="gap-2 rounded-lg data-[state=active]:shadow-sm">
+              <TabsTrigger value="badges" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
                 <Award className="h-4 w-4" />
                 <span className="hidden sm:inline">Badges</span>
               </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-2 rounded-lg data-[state=active]:shadow-sm">
+              <TabsTrigger value="xp" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
                 <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">XP</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-1.5 rounded-lg data-[state=active]:shadow-sm">
+                <TrendingUp className="h-4 w-4" />
                 <span className="hidden sm:inline">Activity</span>
               </TabsTrigger>
             </TabsList>
@@ -516,6 +438,69 @@ export default function Profile() {
                   <p className="text-sm text-muted-foreground mt-1">Keep uploading and engaging to earn badges!</p>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="xp" className="mt-4">
+              <div className="bg-card rounded-2xl border p-5 space-y-5">
+                <div className="flex items-center gap-4">
+                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${config.bgGradient} flex items-center justify-center shadow-lg`}>
+                    <LevelIcon className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">{config.label}</h3>
+                    <p className="text-2xl font-bold text-primary">{profile?.xp || 0} XP</p>
+                  </div>
+                </div>
+                
+                {level !== "meme_lord" && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t.xp.progressTo} {levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.label}</span>
+                      <span className="font-medium">
+                        {(profile?.xp || 0) - config.minXp} / {(levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 0) - config.minXp}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={((profile?.xp || 0) - config.minXp) / ((levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 1) - config.minXp) * 100} 
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground text-right">
+                      {(levelConfig[level === "newbie" ? "meme_fan" : level === "meme_fan" ? "meme_master" : "meme_lord"]?.minXp || 0) - (profile?.xp || 0)} {t.xp.xpNeeded}
+                    </p>
+                  </div>
+                )}
+
+                {level === "meme_lord" && (
+                  <div className="text-center py-4">
+                    <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black px-4 py-2">
+                      <Crown className="h-4 w-4 mr-2" />
+                      {t.xp.maxLevel}
+                    </Badge>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-semibold text-sm mb-3">{t.xp.howToEarn}</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Upload className="h-4 w-4 text-green-500" />
+                      <span>+10 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Heart className="h-4 w-4 text-red-500" />
+                      <span>+2 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <MessageCircle className="h-4 w-4 text-blue-500" />
+                      <span>+5 XP</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Users className="h-4 w-4 text-purple-500" />
+                      <span>+5 XP</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4">
