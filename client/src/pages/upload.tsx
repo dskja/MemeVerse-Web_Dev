@@ -7,19 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Image, Link } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, Image, Video, Link } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function UploadPage() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, navigate] = useLocation();
   const [form, setForm] = useState({
     title: "",
     imageUrl: "",
   });
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -33,29 +37,31 @@ export default function UploadPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/memes"] });
-      toast({ title: "Meme uploaded!" });
+      toast({ title: t.upload.title + "!" });
       navigate("/profile");
     },
     onError: () => {
-      toast({ title: "Failed to upload meme", variant: "destructive" });
+      toast({ title: t.common.error, variant: "destructive" });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.imageUrl) {
-      toast({ title: "Please fill in all fields", variant: "destructive" });
+      toast({ title: t.common.error, variant: "destructive" });
       return;
     }
     uploadMutation.mutate(form);
   };
+
+  const isVideo = form.imageUrl?.match(/\.(mp4|webm|mov)$/i) || mediaType === "video";
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="pt-24 pb-16 px-4 flex items-center justify-center">
-          <p>Loading...</p>
+          <p>{t.common.loading}</p>
         </main>
         <Footer />
       </div>
@@ -75,53 +81,99 @@ export default function UploadPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Upload Meme
+                {t.upload.title}
               </CardTitle>
               <CardDescription>
-                Share your best meme with the MemeVerse community
+                {t.upload.supportedFormats}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">{t.upload.memeTitle}</Label>
                   <Input
                     id="title"
-                    placeholder="Give your meme a catchy title..."
+                    placeholder={t.upload.titlePlaceholder}
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     data-testid="input-meme-title"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="imageUrl">Image URL</Label>
-                  <div className="relative">
-                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="imageUrl"
-                      placeholder="https://example.com/meme.jpg"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                      className="pl-10"
-                      data-testid="input-meme-url"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Paste a direct link to your meme image
-                  </p>
-                </div>
+                <Tabs value={mediaType} onValueChange={(v) => setMediaType(v as "image" | "video")}>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="image" className="flex-1 gap-2">
+                      <Image className="h-4 w-4" />
+                      Image
+                    </TabsTrigger>
+                    <TabsTrigger value="video" className="flex-1 gap-2">
+                      <Video className="h-4 w-4" />
+                      Video
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="image" className="mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="imageUrl">Image URL</Label>
+                      <div className="relative">
+                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="imageUrl"
+                          placeholder="https://example.com/meme.jpg"
+                          value={form.imageUrl}
+                          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                          className="pl-10"
+                          data-testid="input-meme-url"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        JPG, PNG, GIF, WebP
+                      </p>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="video" className="mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="videoUrl">Video URL</Label>
+                      <div className="relative">
+                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="videoUrl"
+                          placeholder="https://example.com/meme.mp4"
+                          value={form.imageUrl}
+                          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                          className="pl-10"
+                          data-testid="input-video-url"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        MP4, WebM, MOV
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 {form.imageUrl && (
-                  <div className="rounded-md border overflow-hidden">
-                    <img
-                      src={form.imageUrl}
-                      alt="Preview"
-                      className="w-full max-h-64 object-contain bg-muted"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                  <div className="rounded-md border overflow-hidden bg-muted">
+                    {isVideo ? (
+                      <video
+                        src={form.imageUrl}
+                        controls
+                        className="w-full max-h-64 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLVideoElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={form.imageUrl}
+                        alt="Preview"
+                        className="w-full max-h-64 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -132,11 +184,11 @@ export default function UploadPage() {
                   data-testid="button-upload-meme"
                 >
                   {uploadMutation.isPending ? (
-                    "Uploading..."
+                    t.upload.uploading
                   ) : (
                     <>
-                      <Image className="h-4 w-4" />
-                      Upload Meme
+                      {isVideo ? <Video className="h-4 w-4" /> : <Image className="h-4 w-4" />}
+                      {t.upload.uploadButton}
                     </>
                   )}
                 </Button>

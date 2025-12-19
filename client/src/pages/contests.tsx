@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/navigation";
@@ -7,16 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Clock, Vote, Image, CheckCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Clock, Vote, Image, CheckCircle, Play, Flame } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, differenceInHours, differenceInDays } from "date-fns";
 import type { Contest, ContestEntry, Meme } from "@shared/schema";
 
 export default function Contests() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const { data: activeContest, isLoading: contestLoading } = useQuery<Contest | null>({
     queryKey: ["/api/contests/active"],
@@ -79,8 +81,8 @@ export default function Contests() {
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
               <Trophy className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Weekly Contest</h1>
-            <p className="text-muted-foreground mt-2">Compete to become the Meme of the Week!</p>
+            <h1 className="text-3xl font-bold">{t.contests.title}</h1>
+            <p className="text-muted-foreground mt-2">{t.contests.checkBackLater}</p>
           </div>
 
           {contestLoading ? (
@@ -114,12 +116,12 @@ export default function Contests() {
                     userHasEntered ? (
                       <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                         <CheckCircle className="h-4 w-4" />
-                        You've entered this contest!
+                        {t.contests.submitEntry}
                       </div>
                     ) : (
                       <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                          Select one of your memes to enter the contest:
+                          {t.contests.submitEntry}:
                         </p>
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                           {userMemes.map((meme) => (
@@ -146,14 +148,14 @@ export default function Contests() {
                     )
                   ) : (
                     <Button onClick={() => (window.location.href = "/api/login")}>
-                      Login to Participate
+                      {t.nav.login}
                     </Button>
                   )}
                 </CardContent>
               </Card>
 
               <div>
-                <h2 className="text-xl font-bold mb-4">Contest Entries ({entries.length})</h2>
+                <h2 className="text-xl font-bold mb-4">{t.contests.entries} ({entries.length})</h2>
                 {entriesLoading ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {[1, 2, 3].map((i) => (
@@ -187,8 +189,8 @@ export default function Contests() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h2 className="text-xl font-bold mb-2">No Active Contest</h2>
-                <p className="text-muted-foreground">Check back soon for the next weekly meme contest!</p>
+                <h2 className="text-xl font-bold mb-2">{t.contests.noActiveContest}</h2>
+                <p className="text-muted-foreground">{t.contests.checkBackLater}</p>
               </CardContent>
             </Card>
           )}

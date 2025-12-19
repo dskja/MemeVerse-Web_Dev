@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Medal, Award, Crown, Flame, Star } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 import type { UserProfile } from "@shared/schema";
 
 const levelIcons: Record<string, typeof Star> = {
@@ -34,6 +34,7 @@ export default function Leaderboard() {
   const { data: leaderboard = [], isLoading } = useQuery<UserProfile[]>({
     queryKey: ["/api/leaderboard"],
   });
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,7 +45,7 @@ export default function Leaderboard() {
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
               <Trophy className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Leaderboard</h1>
+            <h1 className="text-3xl font-bold">{t.leaderboard.title}</h1>
             <p className="text-muted-foreground mt-2">Top creators in the MemeVerse community</p>
           </div>
 
@@ -124,7 +125,7 @@ export default function Leaderboard() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No users on the leaderboard yet. Be the first!</p>
+                <p className="text-muted-foreground">{t.leaderboard.noUsers}</p>
               </CardContent>
             </Card>
           )}
