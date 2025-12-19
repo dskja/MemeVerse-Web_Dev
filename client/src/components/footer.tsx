@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Instagram, Twitter, Youtube, Mail, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
@@ -10,17 +11,18 @@ const socialLinks = [
 ];
 
 const quickLinks = [
+  { name: "Home", href: "/" },
   { name: "About", href: "#about" },
   { name: "Memes", href: "#memes" },
-  { name: "Categories", href: "#categories" },
-  { name: "Community", href: "#community" },
 ];
 
 export function Footer() {
   const scrollToSection = (href: string) => {
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+    if (href.startsWith("#")) {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -29,14 +31,14 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-12 md:py-16">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-3 mb-4">
+            <Link href="/" className="flex items-center gap-3 mb-4">
               <img
                 src={logoImage}
                 alt="MemeVerse Logo"
                 className="h-10 w-10 rounded-full object-cover"
               />
               <span className="font-bold text-xl">MemeVerse</span>
-            </div>
+            </Link>
             <p className="text-muted-foreground text-sm mb-4 font-serif">
               Your daily dose of internet culture. Follow @MemeVerseDC for the 
               freshest memes and trending content.
@@ -67,13 +69,23 @@ export function Footer() {
             <ul className="space-y-2">
               {quickLinks.map((link) => (
                 <li key={link.name}>
-                  <button
-                    onClick={() => scrollToSection(link.href)}
-                    className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-                    data-testid={`link-footer-${link.name.toLowerCase()}`}
-                  >
-                    {link.name}
-                  </button>
+                  {link.href.startsWith("#") ? (
+                    <button
+                      onClick={() => scrollToSection(link.href)}
+                      className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+                      data-testid={`link-footer-${link.name.toLowerCase()}`}
+                    >
+                      {link.name}
+                    </button>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+                      data-testid={`link-footer-${link.name.toLowerCase()}`}
+                    >
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

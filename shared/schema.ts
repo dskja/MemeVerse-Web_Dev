@@ -1,59 +1,69 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// Re-export auth models
+export * from "./models/auth";
+
+// User profiles (extends auth user with additional info)
+export const userProfiles = pgTable("user_profiles", {
+  userId: varchar("user_id").primaryKey(),
+  bio: text("bio"),
+  displayName: varchar("display_name"),
+  avatarUrl: varchar("avatar_url"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ createdAt: true });
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
-
-// Meme schema
+// Meme schema with user ownership
 export const memes = pgTable("memes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
   title: text("title").notNull(),
   imageUrl: text("image_url").notNull(),
-  category: text("category").notNull(),
   likes: integer("likes").default(0),
   shares: integer("shares").default(0),
   featured: boolean("featured").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertMemeSchema = createInsertSchema(memes).omit({ id: true });
+export const memesRelations = relations(memes, ({ one }) => ({
+  profile: one(userProfiles, {
+    fields: [memes.userId],
+    references: [userProfiles.userId],
+  }),
+}));
+
+export const insertMemeSchema = createInsertSchema(memes).omit({ id: true, createdAt: true });
 export type InsertMeme = z.infer<typeof insertMemeSchema>;
 export type Meme = typeof memes.$inferSelect;
 
-// Category schema
-export const categories = pgTable("categories", {
+// Followers system
+export const followers = pgTable("followers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  icon: text("icon").notNull(),
-  color: text("color").notNull(),
+  followerId: varchar("follower_id").notNull(),
+  followingId: varchar("following_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
-export type Category = typeof categories.$inferSelect;
+export const followersRelations = relations(followers, ({ one }) => ({
+  follower: one(userProfiles, {
+    fields: [followers.followerId],
+    references: [userProfiles.userId],
+    relationName: "follower",
+  }),
+  following: one(userProfiles, {
+    fields: [followers.followingId],
+    references: [userProfiles.userId],
+    relationName: "following",
+  }),
+}));
 
-// Contact submission schema
-export const contactSubmissions = pgTable("contact_submissions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  message: text("message").notNull(),
-  memeIdea: text("meme_idea"),
-});
-
-export const insertContactSchema = createInsertSchema(contactSubmissions).omit({ id: true });
-export type InsertContact = z.infer<typeof insertContactSchema>;
-export type Contact = typeof contactSubmissions.$inferSelect;
+export const insertFollowerSchema = createInsertSchema(followers).omit({ id: true, createdAt: true });
+export type InsertFollower = z.infer<typeof insertFollowerSchema>;
+export type Follower = typeof followers.$inferSelect;

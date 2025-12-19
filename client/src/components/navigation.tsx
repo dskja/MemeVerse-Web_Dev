@@ -1,19 +1,28 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Instagram } from "lucide-react";
+import { Link } from "wouter";
+import { Menu, X, Instagram, User, Upload, LogOut, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
+import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/IMG_0856_1766103768140.gif";
 
 const navLinks = [
   { name: "About", href: "#about" },
   { name: "Memes", href: "#memes" },
-  { name: "Categories", href: "#categories" },
-  { name: "Community", href: "#community" },
 ];
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, isLoading, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,12 +33,17 @@ export function Navigation() {
   }, []);
 
   const scrollToSection = (href: string) => {
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+    if (href.startsWith("#")) {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
     setIsMobileMenuOpen(false);
   };
+
+  const displayName = user?.firstName || "User";
+  const avatarUrl = user?.profileImageUrl;
 
   return (
     <header
@@ -41,14 +55,10 @@ export function Navigation() {
     >
       <nav className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
-          <a
-            href="#"
+          <Link
+            href="/"
             className="flex items-center gap-3"
             data-testid="link-logo"
-            onClick={(e) => {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
           >
             <img
               src={logoImage}
@@ -56,7 +66,7 @@ export function Navigation() {
               className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover"
             />
             <span className="font-bold text-xl md:text-2xl">MemeVerse</span>
-          </a>
+          </Link>
 
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
@@ -69,18 +79,75 @@ export function Navigation() {
                 {link.name}
               </Button>
             ))}
+            {user && (
+              <Link href="/upload">
+                <Button variant="ghost" data-testid="link-nav-upload">
+                  Upload
+                </Button>
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            
+            {isLoading ? (
+              <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                      <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-profile">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/upload" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-upload">
+                      <Upload className="h-4 w-4" />
+                      Upload Meme
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => logout()}
+                    className="flex items-center gap-2 cursor-pointer text-destructive"
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                onClick={() => window.location.href = "/api/login"}
+                className="gap-2"
+                data-testid="button-login"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Login</span>
+              </Button>
+            )}
+
             <Button
               className="hidden sm:flex gap-2"
+              variant="outline"
               onClick={() => window.open("https://instagram.com/MemeVerseDC", "_blank")}
               data-testid="button-follow-instagram"
             >
               <Instagram className="h-4 w-4" />
-              Follow
+              <span className="hidden md:inline">Follow</span>
             </Button>
+            
             <Button
               variant="ghost"
               size="icon"
@@ -107,6 +174,22 @@ export function Navigation() {
                   {link.name}
                 </Button>
               ))}
+              {user && (
+                <>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Button>
+                  </Link>
+                  <Link href="/upload">
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <Upload className="h-4 w-4" />
+                      Upload Meme
+                    </Button>
+                  </Link>
+                </>
+              )}
               <Button
                 className="mt-2 gap-2"
                 onClick={() => window.open("https://instagram.com/MemeVerseDC", "_blank")}
