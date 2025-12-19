@@ -2,6 +2,7 @@ import { Navigation } from "@/components/navigation";
 import { HeroSection } from "@/components/hero-section";
 import { MemesSection } from "@/components/memes-section";
 import { AboutSection } from "@/components/about-section";
+import { CreatorOfMonth } from "@/components/creator-of-month";
 import { Footer } from "@/components/footer";
 
 export default function Home() {
@@ -10,6 +11,7 @@ export default function Home() {
       <Navigation />
       <main>
         <HeroSection />
+        <CreatorOfMonth />
         <MemesSection />
         <AboutSection />
       </main>

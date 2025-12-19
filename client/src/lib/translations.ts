@@ -26,6 +26,7 @@ export const translations = {
       aboutDescription: "MemeVerse is a vibrant community where meme enthusiasts come together to share, create, and celebrate the art of memes.",
       engagement: "Engagement",
       posts: "Posts",
+      creatorOfMonth: "Creator of the Month",
     },
     profile: {
       title: "Profile",
@@ -288,6 +289,7 @@ export const translations = {
       aboutDescription: "MemeVerse ist eine lebendige Community, in der Meme-Enthusiasten zusammenkommen, um die Kunst der Memes zu teilen, zu erschaffen und zu feiern.",
       engagement: "Engagement",
       posts: "Beiträge",
+      creatorOfMonth: "Creator des Monats",
     },
     profile: {
       title: "Profil",

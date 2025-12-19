@@ -4,14 +4,14 @@ import { Link } from "wouter";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Medal, Award, Crown, Flame, Star, Zap, Image, Heart, TrendingUp } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Flame, Star, Zap, Image, Heart, TrendingUp, BadgeCheck } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
-import type { UserProfile } from "@shared/schema";
+import { FramedAvatar } from "@/components/framed-avatar";
+import type { UserProfile, ProfileFrame } from "@shared/schema";
 
 const levelIcons: Record<string, typeof Star> = {
   newbie: Star,
@@ -149,16 +149,20 @@ export default function Leaderboard() {
                               <span className="text-sm font-semibold text-muted-foreground">{rank}</span>
                             </div>
                             
-                            <Avatar className="h-9 w-9 border border-border">
-                              <AvatarImage src={profile.avatarUrl || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {(profile.displayName || "U").charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <FramedAvatar 
+                              src={profile.avatarUrl}
+                              fallback={(profile.displayName || "U").charAt(0)}
+                              size="sm"
+                              frame={(profile.profileFrame as ProfileFrame) || "default"}
+                              profileColor={profile.profileColor || undefined}
+                            />
                             
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">
+                              <div className="font-medium text-sm truncate flex items-center gap-1">
                                 {profile.displayName || "User"}
+                                {profile.isVerified && (
+                                  <BadgeCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                )}
                               </div>
                               <div className={`flex items-center gap-1 text-xs ${levelColor}`}>
                                 <LevelIcon className="h-3 w-3" />
@@ -214,11 +218,10 @@ export default function Leaderboard() {
 function PodiumCard({ profile, rank, getLevelLabel }: { profile: UserProfile; rank: number; getLevelLabel: (level: string) => string }) {
   const LevelIcon = levelIcons[profile.level || "newbie"] || Star;
   const levelColor = levelColors[profile.level || "newbie"];
-  const levelBg = levelBgGradients[profile.level || "newbie"];
   
   const isFirst = rank === 1;
-  const height = isFirst ? "h-36" : rank === 2 ? "h-28" : "h-24";
-  const avatarSize = isFirst ? "h-16 w-16" : "h-12 w-12";
+  const height = isFirst ? "h-40" : rank === 2 ? "h-32" : "h-28";
+  const avatarSizeClass = isFirst ? "lg" : "md";
   const textSize = isFirst ? "text-base" : "text-sm";
   const xpSize = isFirst ? "text-lg" : "text-sm";
   
@@ -238,19 +241,25 @@ function PodiumCard({ profile, rank, getLevelLabel }: { profile: UserProfile; ra
     <Link href={`/profile/${profile.userId}`} data-testid={`podium-${rank}`}>
       <div className={`${height} w-24 sm:w-28 flex flex-col items-center justify-end p-3 rounded-xl bg-gradient-to-b ${rankBg} border hover-elevate cursor-pointer`}>
         <div className="relative mb-2">
-          <Avatar className={`${avatarSize} border-2 border-background shadow-md`}>
-            <AvatarImage src={profile.avatarUrl || undefined} />
-            <AvatarFallback className={`bg-gradient-to-br ${levelBg} text-white font-bold`}>
-              {(profile.displayName || "U").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5 shadow">
+          <FramedAvatar
+            src={profile.avatarUrl}
+            fallback={(profile.displayName || "U").charAt(0)}
+            size={avatarSizeClass as "sm" | "md" | "lg"}
+            frame={(profile.profileFrame as ProfileFrame) || "default"}
+            profileColor={profile.profileColor || undefined}
+          />
+          <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5 shadow z-10">
             {rankIcon}
           </div>
         </div>
-        <p className={`${textSize} font-semibold truncate max-w-full text-center`}>
-          {profile.displayName || "User"}
-        </p>
+        <div className="flex items-center gap-1 justify-center max-w-full">
+          <p className={`${textSize} font-semibold truncate text-center`}>
+            {profile.displayName || "User"}
+          </p>
+          {profile.isVerified && (
+            <BadgeCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+          )}
+        </div>
         <div className={`flex items-center gap-0.5 ${levelColor} text-xs`}>
           <LevelIcon className="h-3 w-3" />
         </div>

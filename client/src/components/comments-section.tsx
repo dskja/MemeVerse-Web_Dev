@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MessageCircle, Send, Reply, Trash2 } from "lucide-react";
+import { MessageCircle, Send, Reply, Trash2, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Comment, UserProfile } from "@shared/schema";
+import { FramedAvatar } from "@/components/framed-avatar";
+import type { Comment, UserProfile, ProfileFrame } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 
@@ -167,15 +167,21 @@ function CommentItem({
     <div className="space-y-2" data-testid={`comment-${comment.id}`}>
       <div className="flex gap-3">
         <Link href={`/profile/${comment.authorId}`}>
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={profile?.avatarUrl || undefined} />
-            <AvatarFallback>{(profile?.displayName || "U").charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <FramedAvatar
+            src={profile?.avatarUrl}
+            fallback={(profile?.displayName || "U").charAt(0)}
+            size="sm"
+            frame={(profile?.profileFrame as ProfileFrame) || "default"}
+            profileColor={profile?.profileColor || undefined}
+          />
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Link href={`/profile/${comment.authorId}`} className="font-medium text-sm hover:underline">
+            <Link href={`/profile/${comment.authorId}`} className="font-medium text-sm hover:underline flex items-center gap-1">
               {profile?.displayName || "User"}
+              {profile?.isVerified && (
+                <BadgeCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+              )}
             </Link>
             <span className="text-xs text-muted-foreground">
               {comment.createdAt && formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
@@ -246,13 +252,21 @@ function ReplyItem({ comment, isOwner }: { comment: Comment; isOwner: boolean })
 
   return (
     <div className="flex gap-2" data-testid={`reply-${comment.id}`}>
-      <Avatar className="h-6 w-6">
-        <AvatarImage src={profile?.avatarUrl || undefined} />
-        <AvatarFallback className="text-xs">{(profile?.displayName || "U").charAt(0).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <FramedAvatar
+        src={profile?.avatarUrl}
+        fallback={(profile?.displayName || "U").charAt(0)}
+        size="xs"
+        frame={(profile?.profileFrame as ProfileFrame) || "default"}
+        profileColor={profile?.profileColor || undefined}
+      />
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-xs">{profile?.displayName || "User"}</span>
+          <span className="font-medium text-xs flex items-center gap-1">
+            {profile?.displayName || "User"}
+            {profile?.isVerified && (
+              <BadgeCheck className="h-3 w-3 text-blue-500 flex-shrink-0" />
+            )}
+          </span>
           <span className="text-xs text-muted-foreground">
             {comment.createdAt && formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
           </span>

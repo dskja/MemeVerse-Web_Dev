@@ -64,11 +64,12 @@ interface FramedAvatarProps {
   isVerified?: boolean;
   isCreatorOfMonth?: boolean;
   profileColor?: string | null;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
 const sizeClasses = {
+  xs: "h-6 w-6",
   sm: "h-8 w-8",
   md: "h-12 w-12",
   lg: "h-20 w-20",
