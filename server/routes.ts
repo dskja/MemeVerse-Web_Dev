@@ -2,14 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { insertMemeSchema, insertUserProfileSchema } from "@shared/schema";
+import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup auth first
   await setupAuth(app);
   registerAuthRoutes(app);
 
@@ -20,6 +19,17 @@ export async function registerRoutes(
       res.json(memeList);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch memes" });
+    }
+  });
+
+  // Get single meme
+  app.get("/api/memes/:id", async (req, res) => {
+    try {
+      const meme = await storage.getMeme(req.params.id);
+      if (!meme) return res.status(404).json({ error: "Meme not found" });
+      res.json(meme);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch meme" });
     }
   });
 
@@ -49,6 +59,31 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const validatedData = insertMemeSchema.parse({ ...req.body, userId });
       const meme = await storage.createMeme(validatedData);
+      
+      // Award XP for upload
+      await storage.createXpEvent({
+        userId,
+        source: "upload",
+        amount: XP_REWARDS.upload,
+        entityId: meme.id,
+      });
+      
+      // Check for first upload badge
+      const userMemes = await storage.getMemesByUser(userId);
+      if (userMemes.length === 1) {
+        const badges = await storage.getBadges();
+        const firstUploadBadge = badges.find(b => b.slug === "first_upload");
+        if (firstUploadBadge) {
+          await storage.awardBadge(userId, firstUploadBadge.id);
+          await storage.createNotification({
+            userId,
+            type: "badge",
+            message: `You earned the "${firstUploadBadge.name}" badge!`,
+            entityId: firstUploadBadge.id,
+          });
+        }
+      }
+      
       res.status(201).json(meme);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -67,6 +102,82 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete meme" });
+    }
+  });
+
+  // Like meme (protected)
+  app.post("/api/memes/:id/like", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const memeId = req.params.id;
+      const liked = await storage.likeMeme(memeId, userId);
+      
+      if (liked) {
+        const meme = await storage.getMeme(memeId);
+        if (meme && meme.userId !== userId) {
+          // Award XP to meme owner
+          await storage.createXpEvent({
+            userId: meme.userId,
+            source: "like_received",
+            amount: XP_REWARDS.like_received,
+            entityId: memeId,
+          });
+          
+          // Create notification
+          await storage.createNotification({
+            userId: meme.userId,
+            type: "like",
+            actorId: userId,
+            entityId: memeId,
+            message: "Someone liked your meme!",
+          });
+          
+          // Check for 100 likes badge
+          if ((meme.likes || 0) + 1 >= 100) {
+            const badges = await storage.getBadges();
+            const badge = badges.find(b => b.slug === "hundred_likes");
+            if (badge) {
+              await storage.awardBadge(meme.userId, badge.id);
+            }
+          }
+        }
+      }
+      
+      res.json({ liked });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to like meme" });
+    }
+  });
+
+  // Unlike meme (protected)
+  app.delete("/api/memes/:id/like", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.unlikeMeme(req.params.id, userId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unlike meme" });
+    }
+  });
+
+  // Check if user liked meme
+  app.get("/api/memes/:id/like/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const hasLiked = await storage.hasLikedMeme(req.params.id, userId);
+      res.json({ hasLiked });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check like status" });
+    }
+  });
+
+  // Share meme (increment counter)
+  app.post("/api/memes/:id/share", async (req, res) => {
+    try {
+      await storage.incrementMemeShares(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to track share" });
     }
   });
 
@@ -96,6 +207,17 @@ export async function registerRoutes(
     }
   });
 
+  // Search users
+  app.get("/api/users/search", async (req, res) => {
+    try {
+      const query = req.query.q as string || "";
+      const users = await storage.searchUsers(query);
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
+
   // Follow user (protected)
   app.post("/api/follow/:userId", isAuthenticated, async (req: any, res) => {
     try {
@@ -107,6 +229,22 @@ export async function registerRoutes(
       }
       
       const follower = await storage.follow(followerId, followingId);
+      
+      // Award XP and notify
+      await storage.createXpEvent({
+        userId: followingId,
+        source: "follow_received",
+        amount: XP_REWARDS.follow_received,
+        entityId: followerId,
+      });
+      
+      await storage.createNotification({
+        userId: followingId,
+        type: "follow",
+        actorId: followerId,
+        message: "Someone started following you!",
+      });
+      
       res.status(201).json(follower);
     } catch (error) {
       res.status(500).json({ error: "Failed to follow user" });
@@ -148,6 +286,247 @@ export async function registerRoutes(
       res.json({ followerCount, followingCount });
     } catch (error) {
       res.status(500).json({ error: "Failed to get counts" });
+    }
+  });
+
+  // Comments - Get comments for meme
+  app.get("/api/memes/:memeId/comments", async (req, res) => {
+    try {
+      const commentsList = await storage.getCommentsByMeme(req.params.memeId);
+      res.json(commentsList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  // Comments - Create comment (protected)
+  app.post("/api/memes/:memeId/comments", isAuthenticated, async (req: any, res) => {
+    try {
+      const authorId = req.user.claims.sub;
+      const memeId = req.params.memeId;
+      const validatedData = insertCommentSchema.parse({ ...req.body, memeId, authorId });
+      const comment = await storage.createComment(validatedData);
+      
+      // Award XP for commenting
+      await storage.createXpEvent({
+        userId: authorId,
+        source: "comment",
+        amount: XP_REWARDS.comment,
+        entityId: comment.id,
+      });
+      
+      // Notify meme owner
+      const meme = await storage.getMeme(memeId);
+      if (meme && meme.userId !== authorId) {
+        await storage.createXpEvent({
+          userId: meme.userId,
+          source: "comment_received",
+          amount: XP_REWARDS.comment_received,
+          entityId: comment.id,
+        });
+        
+        await storage.createNotification({
+          userId: meme.userId,
+          type: "comment",
+          actorId: authorId,
+          entityId: memeId,
+          message: "Someone commented on your meme!",
+        });
+      }
+      
+      // Notify parent comment author for replies
+      if (validatedData.parentCommentId) {
+        const allComments = await storage.getCommentsByMeme(memeId);
+        const parentComment = allComments.find(c => c.id === validatedData.parentCommentId);
+        if (parentComment && parentComment.authorId !== authorId) {
+          await storage.createNotification({
+            userId: parentComment.authorId,
+            type: "reply",
+            actorId: authorId,
+            entityId: comment.id,
+            message: "Someone replied to your comment!",
+          });
+        }
+      }
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create comment" });
+      }
+    }
+  });
+
+  // Comments - Delete comment (protected)
+  app.delete("/api/comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const authorId = req.user.claims.sub;
+      await storage.deleteComment(req.params.id, authorId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  // Notifications - Get user notifications (protected)
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notificationsList = await storage.getNotifications(userId);
+      res.json(notificationsList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Notifications - Get unread count (protected)
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notification count" });
+    }
+  });
+
+  // Notifications - Mark as read (protected)
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markNotificationRead(req.params.id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Notifications - Mark all as read (protected)
+  app.patch("/api/notifications/read-all", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark notifications as read" });
+    }
+  });
+
+  // Leaderboard
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const leaderboard = await storage.getLeaderboard(limit);
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Badges - Get all badges
+  app.get("/api/badges", async (_req, res) => {
+    try {
+      const badgesList = await storage.getBadges();
+      res.json(badgesList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+
+  // Badges - Get user badges
+  app.get("/api/users/:userId/badges", async (req, res) => {
+    try {
+      const userBadgesList = await storage.getUserBadges(req.params.userId);
+      res.json(userBadgesList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user badges" });
+    }
+  });
+
+  // Gamification summary for current user
+  app.get("/api/gamification/summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [profile, userBadgesList] = await Promise.all([
+        storage.getProfile(userId),
+        storage.getUserBadges(userId),
+      ]);
+      res.json({
+        xp: profile?.xp || 0,
+        level: profile?.level || "newbie",
+        badges: userBadgesList,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch gamification summary" });
+    }
+  });
+
+  // Contests - Get active contest
+  app.get("/api/contests/active", async (_req, res) => {
+    try {
+      const contest = await storage.getActiveContest();
+      res.json(contest || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active contest" });
+    }
+  });
+
+  // Contests - Get all contests
+  app.get("/api/contests", async (_req, res) => {
+    try {
+      const contestsList = await storage.getContests();
+      res.json(contestsList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contests" });
+    }
+  });
+
+  // Contests - Get contest entries
+  app.get("/api/contests/:contestId/entries", async (req, res) => {
+    try {
+      const entries = await storage.getContestEntries(req.params.contestId);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contest entries" });
+    }
+  });
+
+  // Contests - Submit entry (protected)
+  app.post("/api/contests/:contestId/entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contestId = req.params.contestId;
+      const { memeId } = req.body;
+      
+      const entry = await storage.submitContestEntry({ contestId, memeId, userId });
+      res.status(201).json(entry);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to submit entry" });
+    }
+  });
+
+  // Contests - Vote for entry (protected)
+  app.post("/api/contests/entries/:entryId/vote", isAuthenticated, async (req: any, res) => {
+    try {
+      const voterId = req.user.claims.sub;
+      const entryId = req.params.entryId;
+      const voted = await storage.voteForEntry(entryId, voterId);
+      res.json({ voted });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to vote" });
+    }
+  });
+
+  // Check if user has voted for entry
+  app.get("/api/contests/entries/:entryId/vote/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const voterId = req.user.claims.sub;
+      const hasVoted = await storage.hasVotedForEntry(req.params.entryId, voterId);
+      res.json({ hasVoted });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check vote status" });
     }
   });
 
