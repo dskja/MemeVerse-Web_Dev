@@ -16,7 +16,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Meme, UserProfile } from "@shared/schema";
-import type { User } from "@shared/models/auth";
 
 export default function Profile() {
   const params = useParams<{ userId?: string }>();
@@ -35,11 +34,6 @@ export default function Profile() {
       return res.json();
     },
     enabled: !!userId,
-  });
-
-  const { data: authUser } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    enabled: !!userId && !isOwnProfile,
   });
 
   const { data: memesList = [], isLoading: memesLoading } = useQuery<Meme[]>({
