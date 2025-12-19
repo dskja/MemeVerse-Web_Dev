@@ -197,178 +197,170 @@ export default function MemeDetail() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="pt-20 pb-16">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="mb-6">
+      <main className="pt-16 pb-20">
+        <div className="max-w-2xl mx-auto">
+          <div className="px-4 py-3">
             <Link href="/memes">
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-2 -ml-2">
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="bg-card rounded-2xl overflow-hidden border shadow-sm">
-                <div className="relative bg-black rounded-t-2xl">
-                  {isVideo ? (
-                    <div className="relative">
-                      <video
-                        ref={videoRef}
-                        src={meme.imageUrl}
-                        loop
-                        muted={isMuted}
-                        playsInline
-                        className="w-full aspect-video object-contain cursor-pointer"
-                        onClick={togglePlayPause}
-                        onTimeUpdate={handleTimeUpdate}
-                        onLoadedMetadata={handleLoadedMetadata}
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        data-testid="video-player"
-                      />
-                      
-                      {!isPlaying && (
-                        <div 
-                          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/30"
-                          onClick={togglePlayPause}
-                        >
-                          <div className="bg-primary rounded-full p-5 shadow-lg shadow-primary/30 transform transition-transform hover:scale-105">
-                            <Play className="h-10 w-10 text-white fill-white ml-0.5" />
-                          </div>
-                        </div>
-                      )}
+          <div className="bg-card sm:mx-4 sm:rounded-2xl sm:border sm:shadow-sm overflow-hidden">
+            <div className="relative bg-black">
+              {isVideo ? (
+                <div className="relative">
+                  <video
+                    ref={videoRef}
+                    src={meme.imageUrl}
+                    loop
+                    muted={isMuted}
+                    playsInline
+                    className="w-full max-h-[60vh] object-contain cursor-pointer"
+                    onClick={togglePlayPause}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    data-testid="video-player"
+                  />
+                  
+                  {!isPlaying && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/20"
+                      onClick={togglePlayPause}
+                    >
+                      <div className="bg-primary rounded-full p-5 shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+                        <Play className="h-10 w-10 text-white fill-white ml-0.5" />
+                      </div>
                     </div>
-                  ) : (
-                    <img
-                      src={meme.imageUrl}
-                      alt={meme.title}
-                      className="w-full aspect-video object-contain"
-                    />
                   )}
                 </div>
+              ) : (
+                <img
+                  src={meme.imageUrl}
+                  alt={meme.title}
+                  className="w-full max-h-[60vh] object-contain"
+                />
+              )}
+            </div>
 
-                {isVideo && (
-                  <div className="bg-card border-t p-3 space-y-2">
-                    <Slider
-                      value={[progress]}
-                      max={100}
-                      step={0.1}
-                      onValueChange={handleSeek}
-                      className="cursor-pointer"
-                      data-testid="video-progress-slider"
-                    />
+            {isVideo && (
+              <div className="bg-card/95 backdrop-blur-sm border-t px-4 py-3 space-y-3">
+                <Slider
+                  value={[progress]}
+                  max={100}
+                  step={0.1}
+                  onValueChange={handleSeek}
+                  className="cursor-pointer [&_[role=slider]]:h-5 [&_[role=slider]]:w-5"
+                  data-testid="video-progress-slider"
+                />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-11 w-11"
+                      onClick={togglePlayPause}
+                      data-testid="button-video-play-pause"
+                    >
+                      {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                    </Button>
                     
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={togglePlayPause}
-                          data-testid="button-video-play-pause"
-                        >
-                          {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                        </Button>
-                        
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={toggleMute}
-                          data-testid="button-video-mute"
-                        >
-                          {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                        </Button>
-                        
-                        <span className="text-sm text-muted-foreground ml-2 tabular-nums">
-                          {formatTime(currentTime)} / {formatTime(duration)}
-                        </span>
-                      </div>
-                      
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={handleFullscreen}
-                        data-testid="button-video-fullscreen"
-                      >
-                        <Maximize className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-4 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Link href={`/profile/${meme.userId}`}>
-                      <Avatar className="h-11 w-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
-                        <AvatarImage src={profile?.avatarUrl || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {(profile?.displayName || "U").charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Link>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Link href={`/profile/${meme.userId}`} className="font-semibold hover:text-primary transition-colors">
-                          {profile?.displayName || "User"}
-                        </Link>
-                        <span className="text-muted-foreground text-sm">
-                          {meme.createdAt && formatDistanceToNow(new Date(meme.createdAt), { addSuffix: true })}
-                        </span>
-                      </div>
-                      <h1 className="text-lg font-bold mt-1">{meme.title}</h1>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t">
                     <Button
-                      variant={likeStatus?.hasLiked ? "default" : "outline"}
-                      size="sm"
-                      onClick={handleLike}
-                      disabled={likeMutation.isPending || unlikeMutation.isPending}
-                      className={`gap-2 rounded-full ${likeStatus?.hasLiked ? "bg-red-500 hover:bg-red-600 border-red-500" : ""}`}
-                      data-testid="button-like"
+                      size="icon"
+                      variant="ghost"
+                      className="h-11 w-11"
+                      onClick={toggleMute}
+                      data-testid="button-video-mute"
                     >
-                      <Heart className={`h-4 w-4 ${likeStatus?.hasLiked ? "fill-current" : ""}`} />
-                      {meme.likes || 0}
+                      {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
                     </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 rounded-full"
-                      data-testid="button-comments-count"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      {comments.length}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleShare}
-                      className="gap-2 rounded-full"
-                      data-testid="button-share"
-                    >
-                      <Share2 className="h-4 w-4" />
-                      Share
-                    </Button>
+                    
+                    <span className="text-sm text-muted-foreground ml-2 tabular-nums">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </span>
                   </div>
+                  
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-11 w-11"
+                    onClick={handleFullscreen}
+                    data-testid="button-video-fullscreen"
+                  >
+                    <Maximize className="h-6 w-6" />
+                  </Button>
                 </div>
+              </div>
+            )}
+
+            <div className="p-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <Link href={`/profile/${meme.userId}`}>
+                  <Avatar className="h-12 w-12 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+                    <AvatarImage src={profile?.avatarUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                      {(profile?.displayName || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/profile/${meme.userId}`} className="font-semibold text-base hover:text-primary transition-colors">
+                      {profile?.displayName || "User"}
+                    </Link>
+                    <span className="text-muted-foreground text-sm">
+                      {meme.createdAt && formatDistanceToNow(new Date(meme.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                  <h1 className="text-lg font-bold mt-1 leading-tight">{meme.title}</h1>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-3 border-t">
+                <Button
+                  variant={likeStatus?.hasLiked ? "default" : "outline"}
+                  onClick={handleLike}
+                  disabled={likeMutation.isPending || unlikeMutation.isPending}
+                  className={`gap-2 rounded-full h-11 px-5 ${likeStatus?.hasLiked ? "bg-red-500 hover:bg-red-600 border-red-500" : ""}`}
+                  data-testid="button-like"
+                >
+                  <Heart className={`h-5 w-5 ${likeStatus?.hasLiked ? "fill-current" : ""}`} />
+                  {meme.likes || 0}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2 rounded-full h-11 px-5"
+                  data-testid="button-comments-count"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  {comments.length}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleShare}
+                  className="gap-2 rounded-full h-11 px-5"
+                  data-testid="button-share"
+                >
+                  <Share2 className="h-5 w-5" />
+                  Share
+                </Button>
               </div>
             </div>
 
-            <div className="lg:col-span-1">
-              <div className="bg-card rounded-2xl border shadow-sm sticky top-24">
-                <div className="p-4 border-b">
-                  <h2 className="font-semibold flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5 text-primary" />
-                    Comments ({comments.length})
-                  </h2>
-                </div>
-                <div className="max-h-[60vh] overflow-y-auto p-4">
-                  <CommentsSection memeId={meme.id} />
-                </div>
+            <div className="border-t">
+              <div className="p-4">
+                <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  Comments ({comments.length})
+                </h2>
+                <CommentsSection memeId={meme.id} />
               </div>
             </div>
           </div>

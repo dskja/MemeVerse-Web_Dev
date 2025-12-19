@@ -8,6 +8,15 @@ MemeVerse is a social media-inspired meme showcase and community platform. It's 
 
 Preferred communication style: Simple, everyday language.
 
+**IMPORTANT - Mobile-First Design**: The web app is primarily designed for mobile/smartphone use. All pages and components MUST be optimized for mobile viewing first, then adapted for larger screens. Mobile experience is the priority.
+
+**Design Principles**:
+- Mobile-first responsive design
+- Touch-friendly buttons and controls (minimum 44px touch targets)
+- No TikTok/Instagram clone - create unique MemeVerse identity
+- Clean, modern card-based layouts
+- No emoji characters - use Lucide icons only
+
 ## System Architecture
 
 ### Frontend Architecture
