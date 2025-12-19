@@ -154,7 +154,7 @@ export const translations = {
     about: {
       title: "About",
       ourStory: "Our Story",
-      features: "Features",
+      featuresLabel: "Features",
       joinCommunity: "Join the MemeVerse Community",
       whyMemeverse: "Why MemeVerse?",
       followUs: "Follow us on Instagram for daily memes",
@@ -357,7 +357,7 @@ export const translations = {
     about: {
       title: "Über uns",
       ourStory: "Unsere Geschichte",
-      features: "Funktionen",
+      featuresLabel: "Funktionen",
       joinCommunity: "Werde Teil der MemeVerse-Community",
       whyMemeverse: "Warum MemeVerse?",
       followUs: "Folge uns auf Instagram für tägliche Memes",

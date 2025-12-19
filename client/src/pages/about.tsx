@@ -188,7 +188,7 @@ export default function AboutPage() {
             <div className="text-center mb-12">
               <Badge variant="secondary" className="mb-4">
                 <Sparkles className="h-3 w-3 mr-1" />
-                {t.about.features}
+                {t.about.featuresLabel}
               </Badge>
               <h2 className="font-bold text-3xl md:text-4xl mb-4">
                 {t.about.whyMemeverse}
