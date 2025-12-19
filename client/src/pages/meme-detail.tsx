@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/navigation";
@@ -7,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, ArrowLeft } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Heart, ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from "lucide-react";
 import { CommentsSection } from "@/components/comments-section";
 import { ShareButton } from "@/components/share-button";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +22,12 @@ export default function MemeDetail() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   const { data: meme, isLoading } = useQuery<Meme>({
     queryKey: ["/api/memes", params.id],
@@ -75,6 +83,72 @@ export default function MemeDetail() {
       likeMutation.mutate();
     }
   };
+
+  const togglePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current && !isNaN(videoRef.current.currentTime)) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current && !isNaN(videoRef.current.duration)) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (videoRef.current && duration && !isNaN(duration) && !isNaN(value[0])) {
+      const newTime = (value[0] / 100) * duration;
+      if (!isNaN(newTime)) {
+        videoRef.current.currentTime = newTime;
+        setCurrentTime(newTime);
+      }
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      }
+    }
+  };
+
+  const handleRestart = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (!isFinite(time) || isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const isVideo = meme?.imageUrl?.match(/\.(mp4|webm|mov)$/i) || meme?.imageUrl?.includes("video");
+  const progress = duration > 0 && !isNaN(duration) && !isNaN(currentTime) ? Math.min((currentTime / duration) * 100, 100) : 0;
 
   if (isLoading) {
     return (
@@ -143,11 +217,107 @@ export default function MemeDetail() {
 
               <h1 className="text-xl font-bold mb-4">{meme.title}</h1>
 
-              <img
-                src={meme.imageUrl}
-                alt={meme.title}
-                className="w-full rounded-lg mb-4"
-              />
+              {isVideo ? (
+                <div className="relative rounded-lg overflow-hidden mb-4 bg-black">
+                  <video
+                    ref={videoRef}
+                    src={meme.imageUrl}
+                    loop
+                    muted={isMuted}
+                    playsInline
+                    className="w-full cursor-pointer"
+                    onClick={togglePlayPause}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    data-testid="video-player"
+                  />
+                  
+                  {!isPlaying && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                      onClick={togglePlayPause}
+                    >
+                      <div className="bg-primary/90 rounded-full p-5 shadow-xl transform transition-transform hover:scale-105">
+                        <Play className="h-14 w-14 text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent p-4 pb-4"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="mb-3">
+                      <Slider
+                        value={[progress]}
+                        max={100}
+                        step={0.1}
+                        onValueChange={handleSeek}
+                        className="cursor-pointer [&>span:first-child]:h-1.5 [&>span:first-child]:bg-white/30 [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-2 [&>span:first-child>span]:bg-primary"
+                        data-testid="video-progress-slider"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-10 w-10 text-white hover:text-white hover:bg-white/20 rounded-full"
+                          onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}
+                          data-testid="button-video-play-pause"
+                        >
+                          {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                        </Button>
+                        
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
+                          onClick={(e) => { e.stopPropagation(); handleRestart(); }}
+                          data-testid="button-video-restart"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        
+                        <div className="flex items-center gap-1 ml-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
+                            onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                            data-testid="button-video-mute"
+                          >
+                            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        
+                        <span className="text-white text-sm font-medium ml-2 tabular-nums">
+                          {formatTime(currentTime)} <span className="text-white/60">/</span> {formatTime(duration)}
+                        </span>
+                      </div>
+                      
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 text-white hover:text-white hover:bg-white/20 rounded-full"
+                        onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}
+                        data-testid="button-video-fullscreen"
+                      >
+                        <Maximize className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={meme.imageUrl}
+                  alt={meme.title}
+                  className="w-full rounded-lg mb-4"
+                />
+              )}
 
               <div className="flex items-center gap-4">
                 <Button
