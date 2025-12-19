@@ -3,7 +3,6 @@ import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
-import { EditProfileModal } from "@/components/edit-profile-modal";
 import { MemeDetailModal } from "@/components/meme-detail-modal";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { 
-  Heart, UserPlus, UserMinus, Edit2, Image, Trash2, Star, Flame, Medal, Crown, 
+  Heart, UserPlus, UserMinus, Image, Trash2, Star, Flame, Medal, Crown, 
   Award, Play, Upload, MessageCircle, Trophy, Calendar, Users, Settings, 
   ExternalLink, Share2, Zap, TrendingUp, Target
 } from "lucide-react";
@@ -170,7 +169,6 @@ export default function Profile() {
   const { toast } = useToast();
   const { t } = useLanguage();
   
-  const [isEditing, setIsEditing] = useState(false);
   const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
   const userId = params.userId || user?.id;
@@ -330,22 +328,15 @@ export default function Profile() {
               
               <div className="flex gap-3 mt-5">
                 {isOwnProfile ? (
-                  <>
+                  <Link href="/settings">
                     <Button
-                      variant="outline"
                       className="rounded-full h-11 px-6 gap-2"
-                      onClick={() => setIsEditing(true)}
                       data-testid="button-edit-profile"
                     >
-                      <Edit2 className="h-4 w-4" />
-                      Edit
+                      <Settings className="h-4 w-4" />
+                      {t.settings?.title || "Settings"}
                     </Button>
-                    <Link href="/settings">
-                      <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full" data-testid="button-settings">
-                        <Settings className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </>
+                  </Link>
                 ) : user ? (
                   followStatus?.isFollowing ? (
                     <Button
@@ -563,15 +554,6 @@ export default function Profile() {
         </div>
       </main>
       <Footer />
-
-      {isEditing && userId && (
-        <EditProfileModal
-          isOpen={isEditing}
-          onClose={() => setIsEditing(false)}
-          profile={profile || null}
-          userId={userId}
-        />
-      )}
 
       {selectedMeme && (
         <MemeDetailModal
