@@ -11,6 +11,8 @@ import UploadPage from "@/pages/upload";
 import Leaderboard from "@/pages/leaderboard";
 import MemeDetail from "@/pages/meme-detail";
 import Contests from "@/pages/contests";
+import AboutPage from "@/pages/about";
+import MemesPage from "@/pages/memes";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/meme/:id" component={MemeDetail} />
       <Route path="/contests" component={Contests} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/memes" component={MemesPage} />
       <Route component={NotFound} />
     </Switch>
   );

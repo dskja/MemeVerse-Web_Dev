@@ -12,25 +12,25 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Share2, UserPlus, UserMinus, Edit2, Image, Trash2, Star, Flame, Medal, Crown, Award, Play } from "lucide-react";
+import { Heart, Share2, UserPlus, UserMinus, Edit2, Image, Trash2, Star, Flame, Medal, Crown, Award, Play, Upload, MessageCircle, Trophy, Calendar, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Meme, UserProfile, Badge as BadgeType, UserBadge } from "@shared/schema";
 
-const levelConfig: Record<string, { icon: typeof Star; color: string; label: string; minXp: number; maxXp: number }> = {
-  newbie: { icon: Star, color: "text-muted-foreground", label: "Newbie", minXp: 0, maxXp: 100 },
-  meme_fan: { icon: Flame, color: "text-blue-500", label: "Meme Fan", minXp: 100, maxXp: 500 },
-  meme_master: { icon: Medal, color: "text-purple-500", label: "Meme Master", minXp: 500, maxXp: 2000 },
-  meme_lord: { icon: Crown, color: "text-yellow-500", label: "Meme Lord", minXp: 2000, maxXp: 10000 },
-};
-
 export default function Profile() {
   const params = useParams<{ userId?: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+  
+  const levelConfig: Record<string, { icon: typeof Star; color: string; label: string; minXp: number; maxXp: number }> = {
+    newbie: { icon: Star, color: "text-muted-foreground", label: t.levels.newbie, minXp: 0, maxXp: 100 },
+    meme_fan: { icon: Flame, color: "text-blue-500", label: t.levels.memeFan, minXp: 100, maxXp: 500 },
+    meme_master: { icon: Medal, color: "text-purple-500", label: t.levels.memeMaster, minXp: 500, maxXp: 2000 },
+    meme_lord: { icon: Crown, color: "text-yellow-500", label: t.levels.memeLord, minXp: 2000, maxXp: 10000 },
+  };
   const [isEditing, setIsEditing] = useState(false);
   const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
@@ -90,10 +90,10 @@ export default function Profile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/follow", userId] });
-      toast({ title: "Following!" });
+      toast({ title: t.toasts.following });
     },
     onError: () => {
-      toast({ title: "Failed to follow", variant: "destructive" });
+      toast({ title: t.toasts.error, variant: "destructive" });
     },
   });
 
@@ -103,10 +103,10 @@ export default function Profile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/follow", userId] });
-      toast({ title: "Unfollowed" });
+      toast({ title: t.toasts.unfollowed });
     },
     onError: () => {
-      toast({ title: "Failed to unfollow", variant: "destructive" });
+      toast({ title: t.toasts.error, variant: "destructive" });
     },
   });
 
@@ -116,10 +116,10 @@ export default function Profile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/memes/user", userId] });
-      toast({ title: "Meme deleted" });
+      toast({ title: t.toasts.memeDeleted });
     },
     onError: () => {
-      toast({ title: "Failed to delete meme", variant: "destructive" });
+      toast({ title: t.toasts.error, variant: "destructive" });
     },
   });
 
@@ -269,21 +269,85 @@ export default function Profile() {
                     const xpInCurrentLevel = xp - config.minXp;
                     const xpNeededForLevel = nextConfig ? nextConfig.minXp - config.minXp : 0;
                     const progress = nextConfig ? Math.min(100, (xpInCurrentLevel / xpNeededForLevel) * 100) : 100;
+                    const LevelIcon = config.icon;
+                    const NextLevelIcon = nextConfig ? levelConfig[nextLevelKey!].icon : null;
+                    
+                    const xpActivities = [
+                      { action: t.xp.uploadMeme, xp: "+10 XP", icon: Upload, color: "text-green-500", bg: "bg-green-500/10" },
+                      { action: t.xp.receiveLike, xp: "+2 XP", icon: Heart, color: "text-red-500", bg: "bg-red-500/10" },
+                      { action: t.xp.getComment, xp: "+5 XP", icon: MessageCircle, color: "text-blue-500", bg: "bg-blue-500/10" },
+                      { action: t.xp.winContest, xp: "+100 XP", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+                      { action: t.xp.dailyLogin, xp: "+5 XP", icon: Calendar, color: "text-purple-500", bg: "bg-purple-500/10" },
+                      { action: t.xp.gainFollower, xp: "+3 XP", icon: Users, color: "text-primary", bg: "bg-primary/10" },
+                    ];
+                    
                     return (
-                      <div className="mt-4 space-y-3 bg-muted/50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">XP Progress</span>
+                      <div className="mt-4 space-y-4">
+                        <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 rounded-xl border-2 border-primary/20">
+                          <div className="absolute top-2 right-2">
+                            <Badge variant="secondary" className="text-xs font-bold">
+                              <LevelIcon className={`h-3 w-3 mr-1 ${config.color}`} />
+                              {config.label}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${level === "meme_lord" ? "from-yellow-400 to-yellow-600" : level === "meme_master" ? "from-purple-400 to-purple-600" : level === "meme_fan" ? "from-blue-400 to-blue-600" : "from-gray-400 to-gray-600"} flex items-center justify-center shadow-lg`}>
+                              <LevelIcon className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold">{xp.toLocaleString()} XP</p>
+                              <p className="text-sm text-muted-foreground">Total Experience</p>
+                            </div>
+                          </div>
+                          
                           {nextConfig ? (
-                            <span className="text-sm font-medium">{xpInCurrentLevel} / {xpNeededForLevel}</span>
+                            <>
+                              <div className="flex items-center justify-between text-sm mb-2">
+                                <span className="text-muted-foreground">Progress to {nextConfig.label}</span>
+                                <span className="font-semibold">{Math.round(progress)}%</span>
+                              </div>
+                              <div className="relative">
+                                <Progress value={progress} className="h-3" />
+                                <div className="absolute -top-1 right-0 transform translate-x-1/2">
+                                  {NextLevelIcon && <NextLevelIcon className={`h-5 w-5 ${levelConfig[nextLevelKey!].color}`} />}
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-2 text-center">
+                                <span className="font-semibold text-primary">{(xpNeededForLevel - xpInCurrentLevel).toLocaleString()}</span> XP needed for next level
+                              </p>
+                            </>
                           ) : (
-                            <span className="text-yellow-500 font-bold text-sm">Max Level!</span>
+                            <div className="text-center py-2">
+                              <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-sm px-4 py-1.5">
+                                <Crown className="h-4 w-4 mr-1" />
+                                Maximum Level Achieved!
+                              </Badge>
+                            </div>
                           )}
                         </div>
-                        <Progress value={progress} className="h-2" />
-                        {nextConfig && (
-                          <p className="text-xs text-muted-foreground">
-                            {xpNeededForLevel - xpInCurrentLevel} XP until <strong>{nextConfig.label}</strong>
-                          </p>
+                        
+                        {isOwnProfile && (
+                          <div className="bg-muted/30 p-4 rounded-xl">
+                            <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                              <Flame className="h-4 w-4 text-primary" />
+                              {t.xp.howToEarn}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {xpActivities.map((activity) => {
+                                const ActivityIcon = activity.icon;
+                                return (
+                                  <div key={activity.action} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-background/50">
+                                    <div className={`w-6 h-6 rounded ${activity.bg} flex items-center justify-center`}>
+                                      <ActivityIcon className={`h-3 w-3 ${activity.color}`} />
+                                    </div>
+                                    <span className="flex-1 text-muted-foreground">{activity.action}</span>
+                                    <span className="font-semibold text-primary">{activity.xp}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
