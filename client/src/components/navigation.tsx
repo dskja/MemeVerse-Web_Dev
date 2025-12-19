@@ -30,8 +30,8 @@ export function Navigation() {
   const isHomePage = location === "/";
 
   const navLinks = [
-    { name: t.nav.about, href: "#about", icon: Info },
-    { name: t.nav.memes, href: "#memes", icon: ImageIcon },
+    { name: t.nav.about, href: "/about", icon: Info },
+    { name: t.nav.memes, href: "/memes", icon: ImageIcon },
     { name: t.nav.leaderboard, href: "/leaderboard", icon: Crown },
     { name: t.nav.contests, href: "/contests", icon: Trophy },
   ];
@@ -92,24 +92,13 @@ export function Navigation() {
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const IconComponent = link.icon;
-              return link.href.startsWith("/") ? (
+              return (
                 <Link key={link.name} href={link.href}>
                   <Button variant="ghost" className="gap-2" data-testid={`link-nav-${link.name.toLowerCase()}`}>
                     <IconComponent className="h-4 w-4" />
                     {link.name}
                   </Button>
                 </Link>
-              ) : (
-                <Button
-                  key={link.name}
-                  variant="ghost"
-                  className="gap-2"
-                  onClick={() => scrollToSection(link.href)}
-                  data-testid={`link-nav-${link.name.toLowerCase()}`}
-                >
-                  <IconComponent className="h-4 w-4" />
-                  {link.name}
-                </Button>
               );
             })}
             {user && (
@@ -134,59 +123,101 @@ export function Navigation() {
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all" data-testid="button-user-menu">
+                    <Avatar className="h-8 w-8 border-2 border-primary/20">
                       <AvatarImage src={avatarUrl || undefined} alt={displayName} />
-                      <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-profile">
-                      <User className="h-4 w-4" />
-                      {t.nav.myProfile}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/upload" className="flex items-center gap-2 cursor-pointer" data-testid="link-menu-upload">
-                      <Upload className="h-4 w-4" />
-                      {t.nav.uploadMeme}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      {t.nav.language}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem
-                          onClick={() => setLanguage("en")}
-                          className={language === "en" ? "bg-accent" : ""}
-                          data-testid="button-lang-en"
-                        >
-                          English
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setLanguage("de")}
-                          className={language === "de" ? "bg-accent" : ""}
-                          data-testid="button-lang-de"
-                        >
-                          Deutsch
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
+                <DropdownMenuContent align="end" className="w-64 p-0">
+                  <div className="p-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-b">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12 border-2 border-background shadow-md">
+                        <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                        <AvatarFallback className="bg-primary text-primary-foreground font-bold">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{displayName}</p>
+                        <p className="text-xs text-muted-foreground">@{displayName.toLowerCase().replace(/\s/g, "")}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-2">
+                    <DropdownMenuItem asChild className="rounded-lg h-10">
+                      <Link href="/profile" className="flex items-center gap-3 cursor-pointer" data-testid="link-menu-profile">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <span className="font-medium">{t.nav.myProfile}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-lg h-10">
+                      <Link href="/upload" className="flex items-center gap-3 cursor-pointer" data-testid="link-menu-upload">
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <Upload className="h-4 w-4 text-green-500" />
+                        </div>
+                        <span className="font-medium">{t.nav.uploadMeme}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-lg h-10">
+                      <Link href="/leaderboard" className="flex items-center gap-3 cursor-pointer" data-testid="link-menu-leaderboard">
+                        <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                          <Crown className="h-4 w-4 text-yellow-500" />
+                        </div>
+                        <span className="font-medium">{t.nav.leaderboard}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </div>
+                  
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => logout()}
-                    className="flex items-center gap-2 cursor-pointer text-destructive"
-                    data-testid="button-logout"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    {t.nav.logout}
-                  </DropdownMenuItem>
+                  
+                  <div className="p-2">
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="flex items-center gap-3 rounded-lg h-10">
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                          <Globe className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <span className="font-medium">{t.nav.language}</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="min-w-32">
+                          <DropdownMenuItem
+                            onClick={() => setLanguage("en")}
+                            className={`gap-2 ${language === "en" ? "bg-primary/10 text-primary" : ""}`}
+                            data-testid="button-lang-en"
+                          >
+                            <span className="text-lg">🇺🇸</span>
+                            English
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setLanguage("de")}
+                            className={`gap-2 ${language === "de" ? "bg-primary/10 text-primary" : ""}`}
+                            data-testid="button-lang-de"
+                          >
+                            <span className="text-lg">🇩🇪</span>
+                            Deutsch
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  </div>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <div className="p-2">
+                    <DropdownMenuItem
+                      onClick={() => logout()}
+                      className="flex items-center gap-3 cursor-pointer rounded-lg h-10 text-destructive focus:text-destructive"
+                      data-testid="button-logout"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                        <LogOut className="h-4 w-4" />
+                      </div>
+                      <span className="font-medium">{t.nav.logout}</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -255,7 +286,7 @@ export function Navigation() {
               </div>
               {navLinks.map((link) => {
                 const IconComponent = link.icon;
-                return link.href.startsWith("/") ? (
+                return (
                   <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
                     <Button
                       variant="ghost"
@@ -266,17 +297,6 @@ export function Navigation() {
                       {link.name}
                     </Button>
                   </Link>
-                ) : (
-                  <Button
-                    key={link.name}
-                    variant="ghost"
-                    className="justify-start gap-3"
-                    onClick={() => scrollToSection(link.href)}
-                    data-testid={`link-mobile-nav-${link.name.toLowerCase()}`}
-                  >
-                    <IconComponent className="h-5 w-5 text-primary" />
-                    {link.name}
-                  </Button>
                 );
               })}
               {user && (
