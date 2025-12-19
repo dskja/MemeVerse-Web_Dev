@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { badges } from "@shared/schema";
+import { badges, contests } from "@shared/schema";
 
 const initialBadges = [
   {
@@ -104,4 +104,30 @@ export async function seedBadges() {
   }
   
   console.log("Badges seeded successfully!");
+}
+
+export async function seedContest() {
+  console.log("Seeding weekly contest...");
+  
+  const now = new Date();
+  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  
+  try {
+    const [existingContest] = await db.select().from(contests).limit(1);
+    if (!existingContest) {
+      await db.insert(contests).values({
+        title: "Weekly Meme Contest",
+        description: "Submit your best meme and compete for the title of Meme of the Week! Get votes from the community to win.",
+        theme: "Best Original Meme",
+        startsAt: now,
+        endsAt: nextWeek,
+        active: true,
+      });
+      console.log("Weekly contest created!");
+    } else {
+      console.log("Contest already exists, skipping seed.");
+    }
+  } catch (error) {
+    console.log("Error seeding contest:", error);
+  }
 }
