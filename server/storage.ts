@@ -22,10 +22,12 @@ import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Memes
-  getMemes(): Promise<Meme[]>;
+  getMemes(limit?: number, offset?: number): Promise<Meme[]>;
+  getMemesCount(): Promise<number>;
   getMeme(id: string): Promise<Meme | undefined>;
   getFeaturedMemes(): Promise<Meme[]>;
-  getMemesByUser(userId: string): Promise<Meme[]>;
+  getMemesByUser(userId: string, limit?: number, offset?: number): Promise<Meme[]>;
+  getMemesByUserCount(userId: string): Promise<number>;
   createMeme(meme: InsertMeme): Promise<Meme>;
   deleteMeme(id: string, userId: string): Promise<void>;
   incrementMemeShares(id: string): Promise<void>;
@@ -45,19 +47,21 @@ export interface IStorage {
   // Followers
   follow(followerId: string, followingId: string): Promise<Follower>;
   unfollow(followerId: string, followingId: string): Promise<void>;
-  getFollowers(userId: string): Promise<Follower[]>;
-  getFollowing(userId: string): Promise<Follower[]>;
+  getFollowers(userId: string, limit?: number, offset?: number): Promise<Follower[]>;
+  getFollowing(userId: string, limit?: number, offset?: number): Promise<Follower[]>;
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
   getFollowerCount(userId: string): Promise<number>;
   getFollowingCount(userId: string): Promise<number>;
   
   // Comments
-  getCommentsByMeme(memeId: string): Promise<Comment[]>;
+  getCommentsByMeme(memeId: string, limit?: number, offset?: number): Promise<Comment[]>;
+  getCommentsByMemeCount(memeId: string): Promise<number>;
   createComment(comment: InsertComment): Promise<Comment>;
   deleteComment(id: string, authorId: string): Promise<void>;
   
   // Notifications
-  getNotifications(userId: string): Promise<Notification[]>;
+  getNotifications(userId: string, limit?: number, offset?: number): Promise<Notification[]>;
+  getNotificationsCount(userId: string): Promise<number>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationRead(id: string, userId: string): Promise<void>;
@@ -121,8 +125,22 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // Memes
-  async getMemes(): Promise<Meme[]> {
-    return await db.select().from(memes).orderBy(desc(memes.createdAt));
+  async getMemes(limit?: number, offset?: number): Promise<Meme[]> {
+    let query = db.select().from(memes).orderBy(desc(memes.createdAt));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit) as any;
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async getMemesCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(memes);
+    return result[0]?.count || 0;
   }
 
   async getMeme(id: string): Promise<Meme | undefined> {
@@ -134,8 +152,22 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(memes).where(eq(memes.featured, true)).orderBy(desc(memes.createdAt));
   }
 
-  async getMemesByUser(userId: string): Promise<Meme[]> {
-    return await db.select().from(memes).where(eq(memes.userId, userId)).orderBy(desc(memes.createdAt));
+  async getMemesByUser(userId: string, limit?: number, offset?: number): Promise<Meme[]> {
+    let query = db.select().from(memes).where(eq(memes.userId, userId)).orderBy(desc(memes.createdAt));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit) as any;
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async getMemesByUserCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(memes).where(eq(memes.userId, userId));
+    return result[0]?.count || 0;
   }
 
   async createMeme(meme: InsertMeme): Promise<Meme> {
@@ -250,12 +282,30 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getFollowers(userId: string): Promise<Follower[]> {
-    return await db.select().from(followers).where(eq(followers.followingId, userId));
+  async getFollowers(userId: string, limit?: number, offset?: number): Promise<Follower[]> {
+    let query = db.select().from(followers).where(eq(followers.followingId, userId)).orderBy(desc(followers.createdAt));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit) as any;
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset) as any;
+    }
+    
+    return await query;
   }
 
-  async getFollowing(userId: string): Promise<Follower[]> {
-    return await db.select().from(followers).where(eq(followers.followerId, userId));
+  async getFollowing(userId: string, limit?: number, offset?: number): Promise<Follower[]> {
+    let query = db.select().from(followers).where(eq(followers.followerId, userId)).orderBy(desc(followers.createdAt));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit) as any;
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset) as any;
+    }
+    
+    return await query;
   }
 
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
@@ -276,10 +326,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Comments
-  async getCommentsByMeme(memeId: string): Promise<Comment[]> {
-    return await db.select().from(comments)
+  async getCommentsByMeme(memeId: string, limit?: number, offset?: number): Promise<Comment[]> {
+    let query = db.select().from(comments)
       .where(eq(comments.memeId, memeId))
       .orderBy(desc(comments.createdAt));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit) as any;
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset) as any;
+    }
+    
+    return await query;
+  }
+
+  async getCommentsByMemeCount(memeId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(comments).where(eq(comments.memeId, memeId));
+    return result[0]?.count || 0;
   }
 
   async createComment(comment: InsertComment): Promise<Comment> {
@@ -292,11 +356,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notifications
-  async getNotifications(userId: string): Promise<Notification[]> {
+  async getNotifications(userId: string, limit: number = 50, offset: number = 0): Promise<Notification[]> {
     return await db.select().from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt))
-      .limit(50);
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getNotificationsCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(notifications).where(eq(notifications.userId, userId));
+    return result[0]?.count || 0;
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {

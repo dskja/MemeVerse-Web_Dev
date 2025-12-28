@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -32,7 +32,12 @@ export const userProfiles = pgTable("user_profiles", {
   isCreatorOfMonth: boolean("is_creator_of_month").default(false),
   creatorOfMonthDate: timestamp("creator_of_month_date"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for leaderboard queries (ordering by XP)
+  xpIdx: index("user_profiles_xp_idx").on(table.xp),
+  // Index for searching users by display name
+  displayNameIdx: index("user_profiles_display_name_idx").on(table.displayName),
+}));
 
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ createdAt: true });
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
@@ -48,7 +53,16 @@ export const memes = pgTable("memes", {
   shares: integer("shares").default(0),
   featured: boolean("featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for fetching user's memes
+  userIdIdx: index("memes_user_id_idx").on(table.userId),
+  // Index for ordering by creation date
+  createdAtIdx: index("memes_created_at_idx").on(table.createdAt),
+  // Index for featured memes
+  featuredIdx: index("memes_featured_idx").on(table.featured),
+  // Composite index for user memes ordered by date
+  userCreatedIdx: index("memes_user_created_idx").on(table.userId, table.createdAt),
+}));
 
 export const memesRelations = relations(memes, ({ one }) => ({
   profile: one(userProfiles, {
@@ -83,6 +97,10 @@ export const followers = pgTable("followers", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   uniqueFollow: uniqueIndex("unique_follow_idx").on(table.followerId, table.followingId),
+  // Index for getting followers of a user
+  followingIdIdx: index("followers_following_id_idx").on(table.followingId),
+  // Index for getting users a user is following
+  followerIdIdx: index("followers_follower_id_idx").on(table.followerId),
 }));
 
 export const followersRelations = relations(followers, ({ one }) => ({
@@ -111,7 +129,14 @@ export const comments = pgTable("comments", {
   body: text("body").notNull(),
   likes: integer("likes").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for fetching comments for a meme
+  memeIdIdx: index("comments_meme_id_idx").on(table.memeId),
+  // Index for fetching a user's comments
+  authorIdIdx: index("comments_author_id_idx").on(table.authorId),
+  // Composite index for meme comments ordered by date
+  memeCreatedIdx: index("comments_meme_created_idx").on(table.memeId, table.createdAt),
+}));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
   meme: one(memes, {
@@ -145,7 +170,14 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for fetching user notifications
+  userIdIdx: index("notifications_user_id_idx").on(table.userId),
+  // Index for unread notifications
+  userReadIdx: index("notifications_user_read_idx").on(table.userId, table.read),
+  // Composite index for user notifications ordered by date
+  userCreatedIdx: index("notifications_user_created_idx").on(table.userId, table.createdAt),
+}));
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, read: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
@@ -162,7 +194,12 @@ export const xpEvents = pgTable("xp_events", {
   amount: integer("amount").notNull(),
   entityId: varchar("entity_id"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for fetching user's XP events
+  userIdIdx: index("xp_events_user_id_idx").on(table.userId),
+  // Composite index for user XP events ordered by date
+  userCreatedIdx: index("xp_events_user_created_idx").on(table.userId, table.createdAt),
+}));
 
 export const insertXpEventSchema = createInsertSchema(xpEvents).omit({ id: true, createdAt: true });
 export type InsertXpEvent = z.infer<typeof insertXpEventSchema>;
