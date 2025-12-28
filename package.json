@@ -1,7 +1,7 @@
 {
-  "name": "memeverse-web",
+  "name": "editverse-web",
   "version": "1.0.0",
-  "description": "MemeVerse - A social media platform for meme enthusiasts with gamification, contests, and community features",
+  "description": "EditVerse - A video-edit platform with music recognition, movie integration, and advanced community features",
   "type": "module",
   "license": "MIT",
   "author": "MemeVerse Team",
@@ -10,11 +10,10 @@
     "url": "https://github.com/dskja/MemeVerse-Web_Dev"
   },
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "tsx script/build.ts",
-    "start": "NODE_ENV=production node dist/index.cjs",
+    "dev": "cross-env NODE_ENV=development tsx watch server/index.ts",
+    "build": "cross-env NODE_ENV=production tsx script/build.ts",
+    "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push",
     "lint": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui"
@@ -55,10 +54,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "connect-pg-simple": "^10.0.0",
+    "cross-env": "^7.0.3",
     "date-fns": "^3.6.0",
-    "drizzle-orm": "^0.39.3",
-    "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",
@@ -67,15 +64,17 @@
     "framer-motion": "^11.13.1",
     "helmet": "^8.1.0",
     "input-otp": "^1.4.2",
+    "lowdb": "^7.0.1",
     "lucide-react": "^0.453.0",
     "memoizee": "^0.4.17",
-    "memorystore": "^1.6.7",
     "multer": "^2.0.2",
     "next-themes": "^0.4.6",
-    "openid-client": "^6.8.1",
-    "passport": "^0.7.0",
-    "passport-local": "^1.0.0",
-    "pg": "^8.16.3",
+    "bcrypt": "^5.1.1",
+    "session-file-store": "^1.5.0",
+    "uuid": "^10.0.0",
+    "acrcloud": "^1.5.0",
+    "tmdb-api-v3": "^1.1.0",
+    "fluent-ffmpeg": "^2.1.3",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -96,17 +95,13 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@replit/vite-plugin-cartographer": "^0.4.4",
-    "@replit/vite-plugin-dev-banner": "^0.1.1",
-    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "4.17.21",
     "@types/express-session": "^1.18.2",
     "@types/node": "20.19.27",
-    "@types/passport": "^1.0.17",
-    "@types/passport-local": "^1.0.38",
+    "@types/bcrypt": "^5.0.2",
+    "@types/fluent-ffmpeg": "^2.1.27",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/sanitize-html": "^2.16.0",
@@ -114,7 +109,6 @@
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.20",
-    "drizzle-kit": "^0.31.8",
     "esbuild": "^0.25.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
@@ -122,11 +116,6 @@
     "typescript": "5.6.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.16"
-  },
-  "overrides": {
-    "drizzle-kit": {
-      "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
-    }
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
