@@ -14,7 +14,7 @@ export type {
   Theme,
   User,
   UserProfile,
-  Edit,
+  Edit as BaseEdit,
   EditLike,
   Comment,
   Follower,
@@ -37,7 +37,13 @@ export type {
 } from "../server/storage/models";
 
 // Backward compatibility: Meme types (now called Edit)
-import type { Edit, EditLike } from "../server/storage/models";
+import type { Edit as BaseEdit, EditLike } from "../server/storage/models";
+
+// Add imageUrl as an alias for videoUrl for backward compatibility
+export type Edit = BaseEdit & {
+  imageUrl?: string; // Alias for videoUrl for backward compatibility
+};
+
 export type Meme = Edit;
 export type MemeLike = EditLike;
 export type InsertMeme = Omit<Edit, 'id' | 'createdAt'>;

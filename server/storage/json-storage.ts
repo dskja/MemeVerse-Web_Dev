@@ -191,7 +191,11 @@ export async function getEdits(limit: number = 30, offset: number = 0): Promise<
   await db.read();
   return [...db.data.edits]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(offset, offset + limit);
+    .slice(offset, offset + limit)
+    .map(edit => ({
+      ...edit,
+      imageUrl: edit.videoUrl || edit.thumbnailUrl, // Backward compatibility
+    } as any));
 }
 
 export async function getEditsCount(): Promise<number> {
@@ -201,14 +205,25 @@ export async function getEditsCount(): Promise<number> {
 
 export async function getEdit(id: string): Promise<Edit | undefined> {
   await db.read();
-  return db.data.edits.find(e => e.id === id);
+  const edit = db.data.edits.find(e => e.id === id);
+  if (edit) {
+    return {
+      ...edit,
+      imageUrl: edit.videoUrl || edit.thumbnailUrl, // Backward compatibility
+    } as any;
+  }
+  return undefined;
 }
 
 export async function getFeaturedEdits(): Promise<Edit[]> {
   await db.read();
   return db.data.edits
     .filter(e => e.featured)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .map(edit => ({
+      ...edit,
+      imageUrl: edit.videoUrl || edit.thumbnailUrl, // Backward compatibility
+    } as any));
 }
 
 export async function getEditsByUser(userId: string, limit: number = 30, offset: number = 0): Promise<Edit[]> {
@@ -216,7 +231,11 @@ export async function getEditsByUser(userId: string, limit: number = 30, offset:
   return db.data.edits
     .filter(e => e.userId === userId)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(offset, offset + limit);
+    .slice(offset, offset + limit)
+    .map(edit => ({
+      ...edit,
+      imageUrl: edit.videoUrl || edit.thumbnailUrl, // Backward compatibility
+    } as any));
 }
 
 export async function getEditsByUserCount(userId: string): Promise<number> {
@@ -438,11 +457,12 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
   }
 }
 
-export async function createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification> {
+export async function createNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'> & { isRead?: boolean }): Promise<Notification> {
   await db.read();
   const newNotification: Notification = {
     ...notification,
     id: uuidv4(),
+    isRead: notification.isRead ?? false,
     createdAt: new Date(),
   };
   db.data.notifications.push(newNotification);

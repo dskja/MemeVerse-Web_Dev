@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import path from "path";
+import fs from "fs";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -96,6 +97,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Ensure required directories exist
+  const requiredDirs = ['data', 'sessions', 'uploads', 'uploads/videos', 'uploads/thumbnails'];
+  for (const dir of requiredDirs) {
+    const dirPath = path.join(process.cwd(), dir);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      console.log(`Created directory: ${dirPath}`);
+    }
+  }
+
   // Initialize JSON storage
   await jsonStorage.initialize();
   

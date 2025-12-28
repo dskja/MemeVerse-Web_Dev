@@ -39,8 +39,8 @@ type ProfileOverview = {
 
 type FollowerWithProfile = Follower & { profile: UserProfile | null };
 
-const levelConfig: Record<string, { icon: typeof Star; color: string; bgGradient: string; label: string; minXp: number; maxXp: number }> = {
-  newbie: { icon: Star, color: "text-muted-foreground", bgGradient: "from-gray-400 to-gray-600", label: "Newbie", minXp: 0, maxXp: 100 },
+const levelConfig: Record<string, { icon: typeof StarIcon; color: string; bgGradient: string; label: string; minXp: number; maxXp: number }> = {
+  newbie: { icon: StarIcon, color: "text-muted-foreground", bgGradient: "from-gray-400 to-gray-600", label: "Newbie", minXp: 0, maxXp: 100 },
   meme_fan: { icon: Flame, color: "text-blue-500", bgGradient: "from-blue-400 to-blue-600", label: "Meme Fan", minXp: 100, maxXp: 500 },
   meme_master: { icon: Medal, color: "text-purple-500", bgGradient: "from-purple-400 to-purple-600", label: "Meme Master", minXp: 500, maxXp: 2000 },
   meme_lord: { icon: Crown, color: "text-yellow-500", bgGradient: "from-yellow-400 to-yellow-600", label: "Meme Lord", minXp: 2000, maxXp: 10000 },
@@ -571,7 +571,7 @@ export default function Profile() {
               {overview?.badges && overview.badges.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {overview.badges.map((ub) => (
-                    <Card key={ub.id} className="overflow-hidden" data-testid={`badge-${ub.badge.slug}`}>
+                    <Card key={ub.id} className="overflow-hidden" data-testid={`badge-${ub.badge.id}`}>
                       <CardContent className="p-4 text-center">
                         <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-primary/10 flex items-center justify-center">
                           <Award className="h-6 w-6 text-primary" />
@@ -603,7 +603,7 @@ export default function Profile() {
               {xpEvents.length > 0 ? (
                 <div className="space-y-2">
                   {xpEvents.map((event) => {
-                    const sourceInfo = xpSourceLabels[event.source] || { label: event.source, icon: Zap, color: "text-primary" };
+                    const sourceInfo = xpSourceLabels[event.reason] || { label: event.reason, icon: Zap, color: "text-primary" };
                     const EventIcon = sourceInfo.icon;
                     return (
                       <Card key={event.id}>

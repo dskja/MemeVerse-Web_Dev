@@ -370,7 +370,7 @@ export function MemeDetailModal({ meme, isOpen, onClose }: MemeDetailModalProps)
                       <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="text-sm">{comment.body}</p>
+                      <p className="text-sm">{comment.content}</p>
                     </div>
                   </div>
                 ))
