@@ -7,6 +7,8 @@ import { z } from "zod";
 import { upload } from "./upload-config";
 import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limiter";
 import sanitizeHtml from "sanitize-html";
+import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
+import { desc, sql } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -15,11 +17,18 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Get all memes
-  app.get("/api/memes", readLimiter, async (_req, res) => {
+  // Get all memes with pagination
+  app.get("/api/memes", readLimiter, async (req, res) => {
     try {
-      const memeList = await storage.getMemes();
-      res.json(memeList);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [memeList, total] = await Promise.all([
+        storage.getMemes(limit, offset),
+        storage.getMemesCount()
+      ]);
+      
+      const response = createPaginatedResponse(memeList, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch memes" });
     }
@@ -36,11 +45,18 @@ export async function registerRoutes(
     }
   });
 
-  // Get user's memes
+  // Get user's memes with pagination
   app.get("/api/memes/user/:userId", readLimiter, async (req, res) => {
     try {
-      const memeList = await storage.getMemesByUser(req.params.userId);
-      res.json(memeList);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [memeList, total] = await Promise.all([
+        storage.getMemesByUser(req.params.userId, limit, offset),
+        storage.getMemesByUserCount(req.params.userId)
+      ]);
+      
+      const response = createPaginatedResponse(memeList, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user memes" });
     }
@@ -308,11 +324,18 @@ export async function registerRoutes(
     }
   });
 
-  // Comments - Get comments for meme
+  // Comments - Get comments for meme with pagination
   app.get("/api/memes/:memeId/comments", readLimiter, async (req, res) => {
     try {
-      const commentsList = await storage.getCommentsByMeme(req.params.memeId);
-      res.json(commentsList);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [commentsList, total] = await Promise.all([
+        storage.getCommentsByMeme(req.params.memeId, limit, offset),
+        storage.getCommentsByMemeCount(req.params.memeId)
+      ]);
+      
+      const response = createPaginatedResponse(commentsList, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch comments" });
     }
@@ -401,12 +424,19 @@ export async function registerRoutes(
     }
   });
 
-  // Notifications - Get user notifications (protected)
+  // Notifications - Get user notifications with pagination (protected)
   app.get("/api/notifications", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const notificationsList = await storage.getNotifications(userId);
-      res.json(notificationsList);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [notificationsList, total] = await Promise.all([
+        storage.getNotifications(userId, limit, offset),
+        storage.getNotificationsCount(userId)
+      ]);
+      
+      const response = createPaginatedResponse(notificationsList, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch notifications" });
     }
@@ -650,21 +680,51 @@ export async function registerRoutes(
     }
   });
 
-  // Followers with profiles - Get followers list
+  // Followers with profiles - Get followers list with pagination
   app.get("/api/profile/:userId/followers", readLimiter, async (req, res) => {
     try {
-      const followersWithProfiles = await storage.getFollowersWithProfiles(req.params.userId);
-      res.json(followersWithProfiles);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [followersList, total] = await Promise.all([
+        storage.getFollowers(req.params.userId, limit, offset),
+        storage.getFollowerCount(req.params.userId)
+      ]);
+      
+      // Get profiles for followers
+      const followersWithProfiles = await Promise.all(
+        followersList.map(async (f) => ({
+          ...f,
+          profile: await storage.getProfile(f.followerId)
+        }))
+      );
+      
+      const response = createPaginatedResponse(followersWithProfiles, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch followers" });
     }
   });
 
-  // Following with profiles - Get following list
+  // Following with profiles - Get following list with pagination
   app.get("/api/profile/:userId/following", readLimiter, async (req, res) => {
     try {
-      const followingWithProfiles = await storage.getFollowingWithProfiles(req.params.userId);
-      res.json(followingWithProfiles);
+      const { page, limit, offset } = parsePaginationParams(req.query);
+      
+      const [followingList, total] = await Promise.all([
+        storage.getFollowing(req.params.userId, limit, offset),
+        storage.getFollowingCount(req.params.userId)
+      ]);
+      
+      // Get profiles for following
+      const followingWithProfiles = await Promise.all(
+        followingList.map(async (f) => ({
+          ...f,
+          profile: await storage.getProfile(f.followingId)
+        }))
+      );
+      
+      const response = createPaginatedResponse(followingWithProfiles, total, page, limit);
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch following" });
     }
