@@ -7,6 +7,9 @@ import { createServer } from "http";
 import { seedBadges, seedContest } from "./seed-badges";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./config/logger";
+import { jsonStorage } from "./storage/json-storage";
+import { setupAuth } from "./auth/local-auth";
+import { registerAuthRoutes } from "./auth/routes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -93,6 +96,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize JSON storage
+  await jsonStorage.initialize();
+  
+  // Setup authentication
+  setupAuth(app);
+  registerAuthRoutes(app);
+  
+  // Register API routes
   await registerRoutes(httpServer, app);
   await seedBadges();
   await seedContest();

@@ -1,24 +1,51 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "@shared/schema";
+import { isAuthenticated, getSession } from "./auth/middleware";
 import { z } from "zod";
 import { upload } from "./upload-config";
 import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limiter";
 import sanitizeHtml from "sanitize-html";
 import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
-import { desc, sql } from "drizzle-orm";
 import { validateFileType, optimizeImage, isImage } from "./utils/image-optimizer";
+import { XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "./storage/models";
 import fs from "fs";
 import path from "path";
+
+// Validation schemas
+const insertMemeSchema = z.object({
+  userId: z.string(),
+  title: z.string().min(1).max(200),
+  imageUrl: z.string(),
+  likes: z.number().default(0),
+  shares: z.number().default(0),
+  featured: z.boolean().default(false),
+});
+
+const insertCommentSchema = z.object({
+  editId: z.string(),
+  userId: z.string(),
+  content: z.string().min(1).max(500),
+});
+
+const insertUserProfileSchema = z.object({
+  userId: z.string(),
+  bio: z.string().optional(),
+  displayName: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  xp: z.number().optional(),
+  level: z.string().optional(),
+  isVerified: z.boolean().optional(),
+  profileFrame: z.string().optional(),
+  profileColor: z.string().optional(),
+  isCreatorOfMonth: z.boolean().optional(),
+  theme: z.string().optional(),
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
-  registerAuthRoutes(app);
 
   // Get all memes with pagination
   app.get("/api/memes", readLimiter, async (req, res) => {
@@ -79,7 +106,7 @@ export async function registerRoutes(
   // Create meme (protected)
   app.post("/api/memes", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       // Sanitize text inputs
       const sanitizedBody = {
@@ -88,28 +115,36 @@ export async function registerRoutes(
       };
       
       const validatedData = insertMemeSchema.parse({ ...sanitizedBody, userId });
-      const meme = await storage.createMeme(validatedData);
+      
+      // Add video properties for Edit model
+      const meme = await storage.createMeme({
+        ...validatedData,
+        videoUrl: validatedData.imageUrl || "",
+        views: 0,
+        processingStatus: 'completed' as const,
+        resolutions: {},
+        description: "",
+      });
       
       // Award XP for upload
       await storage.createXpEvent({
         userId,
-        source: "upload",
-        amount: XP_REWARDS.upload,
-        entityId: meme.id,
+        reason: "Upload edit",
+        amount: XP_REWARDS.UPLOAD_EDIT,
       });
       
       // Check for first upload badge
       const userMemes = await storage.getMemesByUser(userId);
       if (userMemes.length === 1) {
         const badges = await storage.getBadges();
-        const firstUploadBadge = badges.find(b => b.slug === "first_upload");
+        const firstUploadBadge = badges.find(b => b.name === "First Steps");
         if (firstUploadBadge) {
           await storage.awardBadge(userId, firstUploadBadge.id);
           await storage.createNotification({
             userId,
             type: "badge",
-            message: `You earned the "${firstUploadBadge.name}" badge!`,
-            entityId: firstUploadBadge.id,
+            content: `You earned the "${firstUploadBadge.name}" badge!`,
+            relatedId: firstUploadBadge.id,
           });
         }
       }
@@ -127,7 +162,7 @@ export async function registerRoutes(
   // Delete meme (protected)
   app.delete("/api/memes/:id", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.deleteMeme(req.params.id, userId);
       res.status(204).send();
     } catch (error) {
@@ -138,7 +173,7 @@ export async function registerRoutes(
   // Like meme (protected)
   app.post("/api/memes/:id/like", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const memeId = req.params.id;
       const liked = await storage.likeMeme(memeId, userId);
       
@@ -148,24 +183,22 @@ export async function registerRoutes(
           // Award XP to meme owner
           await storage.createXpEvent({
             userId: meme.userId,
-            source: "like_received",
-            amount: XP_REWARDS.like_received,
-            entityId: memeId,
+            reason: "Received like",
+            amount: XP_REWARDS.RECEIVE_LIKE,
           });
           
           // Create notification
           await storage.createNotification({
             userId: meme.userId,
             type: "like",
-            actorId: userId,
-            entityId: memeId,
-            message: "Someone liked your meme!",
+            relatedId: memeId,
+            content: "Someone liked your meme!",
           });
           
           // Check for 100 likes badge
           if ((meme.likes || 0) + 1 >= 100) {
             const badges = await storage.getBadges();
-            const badge = badges.find(b => b.slug === "hundred_likes");
+            const badge = badges.find(b => b.name === "Popular Creator");
             if (badge) {
               await storage.awardBadge(meme.userId, badge.id);
             }
@@ -182,7 +215,7 @@ export async function registerRoutes(
   // Unlike meme (protected)
   app.delete("/api/memes/:id/like", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.unlikeMeme(req.params.id, userId);
       res.status(204).send();
     } catch (error) {
@@ -193,7 +226,7 @@ export async function registerRoutes(
   // Check if user liked meme
   app.get("/api/memes/:id/like/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const hasLiked = await storage.hasLikedMeme(req.params.id, userId);
       res.json({ hasLiked });
     } catch (error) {
@@ -224,7 +257,7 @@ export async function registerRoutes(
   // Update profile (protected)
   app.put("/api/profile", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       // Sanitize text inputs
       const sanitizedBody = {
@@ -259,7 +292,7 @@ export async function registerRoutes(
   // Follow user (protected)
   app.post("/api/follow/:userId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const followerId = req.user.claims.sub;
+      const followerId = req.session.userId;
       const followingId = req.params.userId;
       
       if (followerId === followingId) {
@@ -271,16 +304,14 @@ export async function registerRoutes(
       // Award XP and notify
       await storage.createXpEvent({
         userId: followingId,
-        source: "follow_received",
-        amount: XP_REWARDS.follow_received,
-        entityId: followerId,
+        reason: "Received follower",
+        amount: XP_REWARDS.FIRST_FOLLOWER,
       });
       
       await storage.createNotification({
         userId: followingId,
         type: "follow",
-        actorId: followerId,
-        message: "Someone started following you!",
+        content: "Someone started following you!",
       });
       
       res.status(201).json(follower);
@@ -292,7 +323,7 @@ export async function registerRoutes(
   // Unfollow user (protected)
   app.delete("/api/follow/:userId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const followerId = req.user.claims.sub;
+      const followerId = req.session.userId;
       const followingId = req.params.userId;
       await storage.unfollow(followerId, followingId);
       res.status(204).send();
@@ -304,7 +335,7 @@ export async function registerRoutes(
   // Check if following
   app.get("/api/follow/:userId/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const followerId = req.user.claims.sub;
+      const followerId = req.session.userId;
       const followingId = req.params.userId;
       const isFollowing = await storage.isFollowing(followerId, followingId);
       res.json({ isFollowing });
@@ -347,7 +378,7 @@ export async function registerRoutes(
   // Comments - Create comment (protected)
   app.post("/api/memes/:memeId/comments", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const authorId = req.user.claims.sub;
+      const authorId = req.session.userId;
       const memeId = req.params.memeId;
       
       // Sanitize comment content
@@ -361,15 +392,18 @@ export async function registerRoutes(
         }),
       };
       
-      const validatedData = insertCommentSchema.parse({ ...sanitizedBody, memeId, authorId });
+      const validatedData = insertCommentSchema.parse({ 
+        ...sanitizedBody, 
+        editId: memeId,
+        userId: authorId 
+      });
       const comment = await storage.createComment(validatedData);
       
       // Award XP for commenting
       await storage.createXpEvent({
         userId: authorId,
-        source: "comment",
-        amount: XP_REWARDS.comment,
-        entityId: comment.id,
+        reason: "Posted comment",
+        amount: XP_REWARDS.RECEIVE_COMMENT,
       });
       
       // Notify meme owner
@@ -377,33 +411,15 @@ export async function registerRoutes(
       if (meme && meme.userId !== authorId) {
         await storage.createXpEvent({
           userId: meme.userId,
-          source: "comment_received",
-          amount: XP_REWARDS.comment_received,
-          entityId: comment.id,
+          reason: "Received comment",
+          amount: XP_REWARDS.RECEIVE_COMMENT,
         });
         
         await storage.createNotification({
           userId: meme.userId,
           type: "comment",
-          actorId: authorId,
-          entityId: memeId,
-          message: "Someone commented on your meme!",
+          content: "Someone commented on your meme!",
         });
-      }
-      
-      // Notify parent comment author for replies
-      if (validatedData.parentCommentId) {
-        const allComments = await storage.getCommentsByMeme(memeId);
-        const parentComment = allComments.find(c => c.id === validatedData.parentCommentId);
-        if (parentComment && parentComment.authorId !== authorId) {
-          await storage.createNotification({
-            userId: parentComment.authorId,
-            type: "reply",
-            actorId: authorId,
-            entityId: comment.id,
-            message: "Someone replied to your comment!",
-          });
-        }
       }
       
       res.status(201).json(comment);
@@ -419,7 +435,7 @@ export async function registerRoutes(
   // Comments - Delete comment (protected)
   app.delete("/api/comments/:id", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const authorId = req.user.claims.sub;
+      const authorId = req.session.userId;
       await storage.deleteComment(req.params.id, authorId);
       res.status(204).send();
     } catch (error) {
@@ -430,7 +446,7 @@ export async function registerRoutes(
   // Notifications - Get user notifications with pagination (protected)
   app.get("/api/notifications", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { page, limit, offset } = parsePaginationParams(req.query);
       
       const [notificationsList, total] = await Promise.all([
@@ -448,7 +464,7 @@ export async function registerRoutes(
   // Notifications - Get unread count (protected)
   app.get("/api/notifications/unread-count", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const count = await storage.getUnreadNotificationCount(userId);
       res.json({ count });
     } catch (error) {
@@ -459,7 +475,7 @@ export async function registerRoutes(
   // Notifications - Mark as read (protected)
   app.patch("/api/notifications/:id/read", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.markNotificationRead(req.params.id, userId);
       res.json({ success: true });
     } catch (error) {
@@ -470,7 +486,7 @@ export async function registerRoutes(
   // Notifications - Mark all as read (protected)
   app.patch("/api/notifications/read-all", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.markAllNotificationsRead(userId);
       res.json({ success: true });
     } catch (error) {
@@ -512,7 +528,7 @@ export async function registerRoutes(
   // Gamification summary for current user
   app.get("/api/gamification/summary", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const [profile, userBadgesList] = await Promise.all([
         storage.getProfile(userId),
         storage.getUserBadges(userId),
@@ -560,7 +576,7 @@ export async function registerRoutes(
   // Contests - Submit entry (protected)
   app.post("/api/contests/:contestId/entries", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const contestId = req.params.contestId;
       const { memeId } = req.body;
       
@@ -574,7 +590,7 @@ export async function registerRoutes(
   // Contests - Delete entry (protected)
   app.delete("/api/contests/entries/:entryId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const entryId = req.params.entryId;
       const deleted = await storage.deleteContestEntry(entryId, userId);
       if (!deleted) {
@@ -589,7 +605,7 @@ export async function registerRoutes(
   // Contests - Vote for entry (protected)
   app.post("/api/contests/entries/:entryId/vote", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const voterId = req.user.claims.sub;
+      const voterId = req.session.userId;
       const entryId = req.params.entryId;
       const voted = await storage.voteForEntry(entryId, voterId);
       res.json({ voted });
@@ -601,7 +617,7 @@ export async function registerRoutes(
   // Check if user has voted for entry
   app.get("/api/contests/entries/:entryId/vote/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const voterId = req.user.claims.sub;
+      const voterId = req.session.userId;
       const hasVoted = await storage.hasVotedForEntry(req.params.entryId, voterId);
       res.json({ hasVoted });
     } catch (error) {
@@ -622,7 +638,7 @@ export async function registerRoutes(
   // Profile Preferences - Update (protected)
   app.put("/api/profile/preferences", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const prefs = await storage.upsertProfilePreferences({ ...req.body, userId });
       res.json(prefs);
     } catch (error) {
@@ -643,7 +659,7 @@ export async function registerRoutes(
   // Social Links - Upsert (protected)
   app.post("/api/profile/social-links", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const link = await storage.upsertSocialLink({ ...req.body, userId });
       res.json(link);
     } catch (error) {
@@ -654,7 +670,7 @@ export async function registerRoutes(
   // Social Links - Delete (protected)
   app.delete("/api/profile/social-links/:platform", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.deleteSocialLink(userId, req.params.platform);
       res.status(204).send();
     } catch (error) {
@@ -675,9 +691,8 @@ export async function registerRoutes(
   // XP Events - Get recent for user
   app.get("/api/profile/:userId/xp-events", readLimiter, async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 20;
-      const events = await storage.getXpEvents(req.params.userId, limit);
-      res.json(events);
+      // TODO: Implement getXpEvents method
+      res.json([]);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch XP events" });
     }
@@ -764,10 +779,10 @@ export async function registerRoutes(
   // Favorites endpoints
   app.post("/api/favorites/:memeId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const memeId = req.params.memeId;
-      const favorite = await storage.addFavorite(userId, memeId);
-      res.json(favorite);
+      await storage.favoriteMeme(userId, memeId);
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to add favorite" });
     }
@@ -775,8 +790,8 @@ export async function registerRoutes(
 
   app.delete("/api/favorites/:memeId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      await storage.removeFavorite(userId, req.params.memeId);
+      const userId = req.session.userId;
+      await storage.unfavoriteMeme(userId, req.params.memeId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to remove favorite" });
@@ -785,12 +800,9 @@ export async function registerRoutes(
 
   app.get("/api/favorites", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const favorites = await storage.getFavorites(userId);
-      const memes = await Promise.all(
-        favorites.map(f => storage.getMeme(f.memeId))
-      );
-      res.json(memes.filter(Boolean));
+      const userId = req.session.userId;
+      const favorites = await storage.getFavoriteMemes(userId);
+      res.json(favorites);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch favorites" });
     }
@@ -798,8 +810,8 @@ export async function registerRoutes(
 
   app.get("/api/favorites/:memeId/check", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const hasFavorited = await storage.hasFavorited(userId, req.params.memeId);
+      const userId = req.session.userId;
+      const hasFavorited = await storage.isFavoriteMeme(userId, req.params.memeId);
       res.json({ favorited: hasFavorited });
     } catch (error) {
       res.status(500).json({ error: "Failed to check favorite status" });
@@ -809,12 +821,15 @@ export async function registerRoutes(
   // Profile customization endpoints
   app.patch("/api/profile/frame", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { frame } = req.body;
       if (!PROFILE_FRAMES.includes(frame)) {
         return res.status(400).json({ error: "Invalid frame" });
       }
-      const profile = await storage.updateProfileFrame(userId, frame as ProfileFrame);
+      const profile = await storage.upsertProfile({
+        userId,
+        profileFrame: frame as ProfileFrame
+      });
       res.json(profile);
     } catch (error) {
       res.status(500).json({ error: "Failed to update frame" });
@@ -823,9 +838,12 @@ export async function registerRoutes(
 
   app.patch("/api/profile/color", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { color } = req.body;
-      const profile = await storage.updateProfileColor(userId, color || null);
+      const profile = await storage.upsertProfile({
+        userId,
+        profileColor: color || undefined
+      });
       res.json(profile);
     } catch (error) {
       res.status(500).json({ error: "Failed to update color" });
@@ -835,15 +853,13 @@ export async function registerRoutes(
   // Creator of Month
   app.get("/api/creator-of-month", readLimiter, async (_req, res) => {
     try {
-      const creator = await storage.getCreatorOfMonth();
+      // TODO: Implement getCreatorOfMonth or find manually
+      const profiles = await storage.getLeaderboard(100);
+      const creator = profiles.find(p => p.isCreatorOfMonth);
       if (!creator) {
         return res.json(null);
       }
-      const userData = await storage.getProfile(creator.userId);
-      res.json({
-        ...creator,
-        username: userData?.displayName || userData?.userId || creator.userId,
-      });
+      res.json(creator);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch creator of month" });
     }
@@ -852,8 +868,10 @@ export async function registerRoutes(
   // Verified users
   app.get("/api/verified-users", readLimiter, async (_req, res) => {
     try {
-      const users = await storage.getVerifiedUsers();
-      res.json(users);
+      // TODO: Implement getVerifiedUsers or filter manually
+      const profiles = await storage.getLeaderboard(100);
+      const verified = profiles.filter(p => p.isVerified);
+      res.json(verified);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch verified users" });
     }
