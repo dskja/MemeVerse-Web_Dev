@@ -16,7 +16,6 @@ export async function validateFileType(buffer: Buffer): Promise<{ valid: boolean
     
     const allowedMimeTypes = [
       "image/jpeg",
-      "image/jpg",
       "image/png",
       "image/gif",
       "image/webp",
@@ -82,8 +81,12 @@ export async function optimizeImage(
     }
     
     // Delete original if optimization succeeded
-    if (fs.existsSync(inputPath) && inputPath !== outputPath) {
-      fs.unlinkSync(inputPath);
+    try {
+      if (inputPath !== outputPath) {
+        fs.unlinkSync(inputPath);
+      }
+    } catch (error) {
+      // Ignore error if file doesn't exist
     }
     
     return {

@@ -884,14 +884,18 @@ export async function registerRoutes(
       // Optimize images (not videos)
       if (validation.mimeType && isImage(validation.mimeType)) {
         try {
-          const optimizedName = `${path.basename(req.file.filename, path.extname(req.file.filename))}.webp`;
+          // Generate safe filename - req.file.filename is already safe from upload-config
+          const safeBasename = path.basename(req.file.filename).replace(/[^a-zA-Z0-9-_.]/g, '');
+          const optimizedName = `${path.basename(safeBasename, path.extname(safeBasename))}.webp`;
           const optimizedPath = path.join(path.dirname(filePath), optimizedName);
           
           const result = await optimizeImage(filePath, optimizedPath, true);
           finalPath = result.optimized;
           
           if (result.thumbnail) {
-            thumbnailUrl = `/uploads/thumbnails/${path.basename(result.thumbnail)}`;
+            // Extra safety: ensure we only get the filename, no path components
+            const safeThumbnailName = path.basename(result.thumbnail).replace(/[^a-zA-Z0-9-_.]/g, '');
+            thumbnailUrl = `/uploads/thumbnails/${safeThumbnailName}`;
           }
         } catch (optimizeError) {
           console.error("Image optimization failed, using original:", optimizeError);
@@ -899,7 +903,9 @@ export async function registerRoutes(
         }
       }
 
-      const fileUrl = `/uploads/${path.basename(finalPath)}`;
+      // Ensure we only return the filename without any path components
+      const safeFilename = path.basename(finalPath).replace(/[^a-zA-Z0-9-_.]/g, '');
+      const fileUrl = `/uploads/${safeFilename}`;
       
       res.json({ 
         url: fileUrl,
