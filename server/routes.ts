@@ -9,6 +9,9 @@ import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limite
 import sanitizeHtml from "sanitize-html";
 import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
 import { desc, sql } from "drizzle-orm";
+import { validateFileType, optimizeImage, isImage } from "./utils/image-optimizer";
+import fs from "fs";
+import path from "path";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -856,15 +859,58 @@ export async function registerRoutes(
     }
   });
 
-  // File upload endpoint (refactored with multer config)
+  // File upload endpoint with enhanced security and image optimization
   app.post("/api/upload", isAuthenticated, uploadLimiter, upload.single("file"), async (req: any, res, next) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
-      const fileUrl = `/uploads/${req.file.filename}`;
-      res.json({ url: fileUrl });
+
+      const filePath = req.file.path;
+      
+      // Validate file type using magic numbers (not just extension)
+      const fileBuffer = fs.readFileSync(filePath);
+      const validation = await validateFileType(fileBuffer);
+      
+      if (!validation.valid) {
+        // Delete invalid file
+        fs.unlinkSync(filePath);
+        return res.status(400).json({ error: validation.error || "Invalid file type" });
+      }
+
+      let finalPath = filePath;
+      let thumbnailUrl: string | undefined;
+
+      // Optimize images (not videos)
+      if (validation.mimeType && isImage(validation.mimeType)) {
+        try {
+          const optimizedName = `${path.basename(req.file.filename, path.extname(req.file.filename))}.webp`;
+          const optimizedPath = path.join(path.dirname(filePath), optimizedName);
+          
+          const result = await optimizeImage(filePath, optimizedPath, true);
+          finalPath = result.optimized;
+          
+          if (result.thumbnail) {
+            thumbnailUrl = `/uploads/thumbnails/${path.basename(result.thumbnail)}`;
+          }
+        } catch (optimizeError) {
+          console.error("Image optimization failed, using original:", optimizeError);
+          // Keep original file if optimization fails
+        }
+      }
+
+      const fileUrl = `/uploads/${path.basename(finalPath)}`;
+      
+      res.json({ 
+        url: fileUrl,
+        thumbnail: thumbnailUrl,
+        mimeType: validation.mimeType
+      });
     } catch (error) {
+      // Clean up file on error
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
       next(error);
     }
   });
