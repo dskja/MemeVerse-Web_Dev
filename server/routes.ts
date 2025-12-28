@@ -1,24 +1,37 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "@shared/schema";
+import { isAuthenticated, getSession } from "./auth/middleware";
 import { z } from "zod";
 import { upload } from "./upload-config";
 import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limiter";
 import sanitizeHtml from "sanitize-html";
 import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
-import { desc, sql } from "drizzle-orm";
 import { validateFileType, optimizeImage, isImage } from "./utils/image-optimizer";
+import { XP_REWARDS } from "./storage/models";
 import fs from "fs";
 import path from "path";
+
+// Validation schemas
+const insertMemeSchema = z.object({
+  userId: z.string(),
+  title: z.string().min(1).max(200),
+  imageUrl: z.string(),
+  likes: z.number().default(0),
+  shares: z.number().default(0),
+  featured: z.boolean().default(false),
+});
+
+const insertCommentSchema = z.object({
+  editId: z.string(),
+  userId: z.string(),
+  content: z.string().min(1).max(500),
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
-  registerAuthRoutes(app);
 
   // Get all memes with pagination
   app.get("/api/memes", readLimiter, async (req, res) => {

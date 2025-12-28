@@ -31,9 +31,9 @@ import type {
   Playlist,
   Battle,
   Message,
-  calculateLevel,
   XP_REWARDS,
 } from './models';
+import { calculateLevel } from './models';
 
 // Database file path
 const DB_PATH = join(process.cwd(), 'data', 'db.json');

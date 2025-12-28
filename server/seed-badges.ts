@@ -1,93 +1,81 @@
-import { db } from "./db";
-import { badges, contests } from "@shared/schema";
+import { jsonStorage } from "./storage/json-storage";
 
 const initialBadges = [
   {
-    slug: "first_upload",
     name: "First Steps",
-    description: "Upload your first meme",
-    icon: "Upload",
-    criteria: "first_meme_uploaded",
+    description: "Upload your first edit",
+    imageUrl: "/badges/first_upload.svg",
+    category: "milestone" as const,
     xpReward: 50,
   },
   {
-    slug: "ten_uploads",
     name: "Content Creator",
-    description: "Upload 10 memes",
-    icon: "Image",
-    criteria: "memes_count_10",
+    description: "Upload 10 edits",
+    imageUrl: "/badges/ten_uploads.svg",
+    category: "milestone" as const,
     xpReward: 100,
   },
   {
-    slug: "fifty_uploads",
-    name: "Meme Machine",
-    description: "Upload 50 memes",
-    icon: "Layers",
-    criteria: "memes_count_50",
+    name: "Edit Master",
+    description: "Upload 50 edits",
+    imageUrl: "/badges/fifty_uploads.svg",
+    category: "milestone" as const,
     xpReward: 250,
   },
   {
-    slug: "hundred_likes",
     name: "Popular Creator",
-    description: "Get 100 total likes on your memes",
-    icon: "Heart",
-    criteria: "total_likes_100",
+    description: "Get 100 total likes on your edits",
+    imageUrl: "/badges/hundred_likes.svg",
+    category: "achievement" as const,
     xpReward: 150,
   },
   {
-    slug: "five_hundred_likes",
     name: "Crowd Favorite",
-    description: "Get 500 total likes on your memes",
-    icon: "Flame",
-    criteria: "total_likes_500",
+    description: "Get 500 total likes on your edits",
+    imageUrl: "/badges/five_hundred_likes.svg",
+    category: "achievement" as const,
     xpReward: 300,
   },
   {
-    slug: "first_comment",
     name: "Engaged",
     description: "Leave your first comment",
-    icon: "MessageCircle",
-    criteria: "first_comment",
+    imageUrl: "/badges/first_comment.svg",
+    category: "milestone" as const,
     xpReward: 25,
   },
   {
-    slug: "fifty_comments",
     name: "Conversationalist",
     description: "Leave 50 comments",
-    icon: "MessageSquare",
-    criteria: "comments_count_50",
+    imageUrl: "/badges/fifty_comments.svg",
+    category: "achievement" as const,
     xpReward: 100,
   },
   {
-    slug: "ten_followers",
     name: "Rising Star",
     description: "Get 10 followers",
-    icon: "Users",
-    criteria: "followers_count_10",
+    imageUrl: "/badges/ten_followers.svg",
+    category: "milestone" as const,
     xpReward: 100,
   },
   {
-    slug: "fifty_followers",
     name: "Influencer",
     description: "Get 50 followers",
-    icon: "Crown",
-    criteria: "followers_count_50",
+    imageUrl: "/badges/fifty_followers.svg",
+    category: "achievement" as const,
     xpReward: 250,
   },
   {
-    slug: "contest_winner",
     name: "Champion",
     description: "Win a weekly contest",
-    icon: "Trophy",
-    criteria: "contest_won",
+    imageUrl: "/badges/contest_winner.svg",
+    category: "contest" as const,
     xpReward: 500,
   },
   {
-    slug: "contest_participant",
     name: "Competitor",
     description: "Participate in a contest",
-    icon: "Award",
-    criteria: "contest_entry",
+    imageUrl: "/badges/contest_participant.svg",
+    category: "contest" as const,
     xpReward: 25,
   },
 ];
@@ -95,15 +83,20 @@ const initialBadges = [
 export async function seedBadges() {
   console.log("Seeding badges...");
   
-  for (const badge of initialBadges) {
-    try {
-      await db.insert(badges).values(badge).onConflictDoNothing();
-    } catch (error) {
-      console.log(`Badge ${badge.slug} already exists or error:`, error);
+  try {
+    const existingBadges = await jsonStorage.getAllBadges();
+    
+    if (existingBadges.length === 0) {
+      for (const badge of initialBadges) {
+        await jsonStorage.createBadge(badge);
+      }
+      console.log("Badges seeded successfully!");
+    } else {
+      console.log("Badges already exist, skipping seed.");
     }
+  } catch (error) {
+    console.log("Error seeding badges:", error);
   }
-  
-  console.log("Badges seeded successfully!");
 }
 
 export async function seedContest() {
@@ -113,15 +106,17 @@ export async function seedContest() {
   const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   
   try {
-    const [existingContest] = await db.select().from(contests).limit(1);
-    if (!existingContest) {
-      await db.insert(contests).values({
-        title: "Weekly Meme Contest",
-        description: "Submit your best meme and compete for the title of Meme of the Week! Get votes from the community to win.",
-        theme: "Best Original Meme",
-        startsAt: now,
-        endsAt: nextWeek,
-        active: true,
+    const existingContests = await jsonStorage.getActiveContests();
+    
+    if (existingContests.length === 0) {
+      await jsonStorage.createContest({
+        title: "Weekly Edit Battle",
+        description: "Submit your best edit and compete for the title of Edit of the Week! Get votes from the community to win.",
+        theme: "Best Original Edit",
+        startDate: now,
+        endDate: nextWeek,
+        isActive: true,
+        prizes: ["Featured placement", "500 XP bonus", "Champion badge"],
       });
       console.log("Weekly contest created!");
     } else {
