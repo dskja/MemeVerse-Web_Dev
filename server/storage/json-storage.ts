@@ -438,11 +438,12 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
   }
 }
 
-export async function createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification> {
+export async function createNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'> & { isRead?: boolean }): Promise<Notification> {
   await db.read();
   const newNotification: Notification = {
     ...notification,
     id: uuidv4(),
+    isRead: notification.isRead ?? false,
     createdAt: new Date(),
   };
   db.data.notifications.push(newNotification);

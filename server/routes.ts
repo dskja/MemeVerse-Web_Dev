@@ -8,7 +8,7 @@ import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limite
 import sanitizeHtml from "sanitize-html";
 import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
 import { validateFileType, optimizeImage, isImage } from "./utils/image-optimizer";
-import { XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "./storage/models";
+import { XP_REWARDS, PROFILE_FRAMES, type ProfileFrame, USER_LEVELS, type UserLevel } from "./storage/models";
 import fs from "fs";
 import path from "path";
 
@@ -34,7 +34,7 @@ const insertUserProfileSchema = z.object({
   displayName: z.string().optional(),
   avatarUrl: z.string().optional(),
   xp: z.number().optional(),
-  level: z.string().optional(),
+  level: z.enum(USER_LEVELS).optional(),
   isVerified: z.boolean().optional(),
   profileFrame: z.string().optional(),
   profileColor: z.string().optional(),
@@ -578,9 +578,14 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId;
       const contestId = req.params.contestId;
-      const { memeId } = req.body;
+      const { memeId, editId } = req.body;
       
-      const entry = await storage.submitContestEntry({ contestId, memeId, userId });
+      // Support both memeId and editId for backward compatibility
+      const entry = await storage.submitContestEntry({ 
+        contestId, 
+        editId: editId || memeId, 
+        userId 
+      });
       res.status(201).json(entry);
     } catch (error) {
       res.status(500).json({ error: "Failed to submit entry" });
