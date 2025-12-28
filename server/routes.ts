@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { insertMemeSchema, insertUserProfileSchema, insertCommentSchema, XP_REWARDS, PROFILE_FRAMES, type ProfileFrame } from "@shared/schema";
 import { z } from "zod";
+import { upload } from "./upload-config";
+import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limiter";
+import sanitizeHtml from "sanitize-html";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -13,7 +16,7 @@ export async function registerRoutes(
   registerAuthRoutes(app);
 
   // Get all memes
-  app.get("/api/memes", async (_req, res) => {
+  app.get("/api/memes", readLimiter, async (_req, res) => {
     try {
       const memeList = await storage.getMemes();
       res.json(memeList);
@@ -22,19 +25,9 @@ export async function registerRoutes(
     }
   });
 
-  // Get single meme
-  app.get("/api/memes/:id", async (req, res) => {
-    try {
-      const meme = await storage.getMeme(req.params.id);
-      if (!meme) return res.status(404).json({ error: "Meme not found" });
-      res.json(meme);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch meme" });
-    }
-  });
-
+  // IMPORTANT: Featured route must come BEFORE :id route to avoid conflicts
   // Get featured memes
-  app.get("/api/memes/featured", async (_req, res) => {
+  app.get("/api/memes/featured", readLimiter, async (_req, res) => {
     try {
       const memeList = await storage.getFeaturedMemes();
       res.json(memeList);
@@ -44,7 +37,7 @@ export async function registerRoutes(
   });
 
   // Get user's memes
-  app.get("/api/memes/user/:userId", async (req, res) => {
+  app.get("/api/memes/user/:userId", readLimiter, async (req, res) => {
     try {
       const memeList = await storage.getMemesByUser(req.params.userId);
       res.json(memeList);
@@ -53,11 +46,29 @@ export async function registerRoutes(
     }
   });
 
+  // Get single meme (must come after specific routes)
+  app.get("/api/memes/:id", readLimiter, async (req, res) => {
+    try {
+      const meme = await storage.getMeme(req.params.id);
+      if (!meme) return res.status(404).json({ error: "Meme not found" });
+      res.json(meme);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch meme" });
+    }
+  });
+
   // Create meme (protected)
-  app.post("/api/memes", isAuthenticated, async (req: any, res) => {
+  app.post("/api/memes", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertMemeSchema.parse({ ...req.body, userId });
+      
+      // Sanitize text inputs
+      const sanitizedBody = {
+        ...req.body,
+        title: sanitizeHtml(req.body.title, { allowedTags: [], allowedAttributes: {} }),
+      };
+      
+      const validatedData = insertMemeSchema.parse({ ...sanitizedBody, userId });
       const meme = await storage.createMeme(validatedData);
       
       // Award XP for upload
@@ -95,7 +106,7 @@ export async function registerRoutes(
   });
 
   // Delete meme (protected)
-  app.delete("/api/memes/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/memes/:id", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.deleteMeme(req.params.id, userId);
@@ -106,7 +117,7 @@ export async function registerRoutes(
   });
 
   // Like meme (protected)
-  app.post("/api/memes/:id/like", isAuthenticated, async (req: any, res) => {
+  app.post("/api/memes/:id/like", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const memeId = req.params.id;
@@ -150,7 +161,7 @@ export async function registerRoutes(
   });
 
   // Unlike meme (protected)
-  app.delete("/api/memes/:id/like", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/memes/:id/like", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.unlikeMeme(req.params.id, userId);
@@ -161,7 +172,7 @@ export async function registerRoutes(
   });
 
   // Check if user liked meme
-  app.get("/api/memes/:id/like/status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/memes/:id/like/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const hasLiked = await storage.hasLikedMeme(req.params.id, userId);
@@ -172,7 +183,7 @@ export async function registerRoutes(
   });
 
   // Share meme (increment counter)
-  app.post("/api/memes/:id/share", async (req, res) => {
+  app.post("/api/memes/:id/share", apiLimiter, async (req, res) => {
     try {
       await storage.incrementMemeShares(req.params.id);
       res.json({ success: true });
@@ -182,7 +193,7 @@ export async function registerRoutes(
   });
 
   // Get user profile
-  app.get("/api/profile/:userId", async (req, res) => {
+  app.get("/api/profile/:userId", readLimiter, async (req, res) => {
     try {
       const profile = await storage.getProfile(req.params.userId);
       res.json(profile || null);
@@ -192,10 +203,18 @@ export async function registerRoutes(
   });
 
   // Update profile (protected)
-  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+  app.put("/api/profile", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertUserProfileSchema.parse({ ...req.body, userId });
+      
+      // Sanitize text inputs
+      const sanitizedBody = {
+        ...req.body,
+        bio: req.body.bio ? sanitizeHtml(req.body.bio, { allowedTags: [], allowedAttributes: {} }) : req.body.bio,
+        displayName: req.body.displayName ? sanitizeHtml(req.body.displayName, { allowedTags: [], allowedAttributes: {} }) : req.body.displayName,
+      };
+      
+      const validatedData = insertUserProfileSchema.parse({ ...sanitizedBody, userId });
       const profile = await storage.upsertProfile(validatedData);
       res.json(profile);
     } catch (error) {
@@ -208,7 +227,7 @@ export async function registerRoutes(
   });
 
   // Search users
-  app.get("/api/users/search", async (req, res) => {
+  app.get("/api/users/search", readLimiter, async (req, res) => {
     try {
       const query = req.query.q as string || "";
       const users = await storage.searchUsers(query);
@@ -219,7 +238,7 @@ export async function registerRoutes(
   });
 
   // Follow user (protected)
-  app.post("/api/follow/:userId", isAuthenticated, async (req: any, res) => {
+  app.post("/api/follow/:userId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
@@ -252,7 +271,7 @@ export async function registerRoutes(
   });
 
   // Unfollow user (protected)
-  app.delete("/api/follow/:userId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/follow/:userId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
@@ -264,7 +283,7 @@ export async function registerRoutes(
   });
 
   // Check if following
-  app.get("/api/follow/:userId/status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/follow/:userId/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
@@ -276,7 +295,7 @@ export async function registerRoutes(
   });
 
   // Get follower/following counts
-  app.get("/api/follow/:userId/counts", async (req, res) => {
+  app.get("/api/follow/:userId/counts", readLimiter, async (req, res) => {
     try {
       const userId = req.params.userId;
       const [followerCount, followingCount] = await Promise.all([
@@ -290,7 +309,7 @@ export async function registerRoutes(
   });
 
   // Comments - Get comments for meme
-  app.get("/api/memes/:memeId/comments", async (req, res) => {
+  app.get("/api/memes/:memeId/comments", readLimiter, async (req, res) => {
     try {
       const commentsList = await storage.getCommentsByMeme(req.params.memeId);
       res.json(commentsList);
@@ -300,11 +319,23 @@ export async function registerRoutes(
   });
 
   // Comments - Create comment (protected)
-  app.post("/api/memes/:memeId/comments", isAuthenticated, async (req: any, res) => {
+  app.post("/api/memes/:memeId/comments", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const authorId = req.user.claims.sub;
       const memeId = req.params.memeId;
-      const validatedData = insertCommentSchema.parse({ ...req.body, memeId, authorId });
+      
+      // Sanitize comment content
+      const sanitizedBody = {
+        ...req.body,
+        content: sanitizeHtml(req.body.content, { 
+          allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
+          allowedAttributes: {
+            'a': ['href']
+          }
+        }),
+      };
+      
+      const validatedData = insertCommentSchema.parse({ ...sanitizedBody, memeId, authorId });
       const comment = await storage.createComment(validatedData);
       
       // Award XP for commenting
@@ -360,7 +391,7 @@ export async function registerRoutes(
   });
 
   // Comments - Delete comment (protected)
-  app.delete("/api/comments/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/comments/:id", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const authorId = req.user.claims.sub;
       await storage.deleteComment(req.params.id, authorId);
@@ -371,7 +402,7 @@ export async function registerRoutes(
   });
 
   // Notifications - Get user notifications (protected)
-  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const notificationsList = await storage.getNotifications(userId);
@@ -382,7 +413,7 @@ export async function registerRoutes(
   });
 
   // Notifications - Get unread count (protected)
-  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications/unread-count", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const count = await storage.getUnreadNotificationCount(userId);
@@ -393,7 +424,7 @@ export async function registerRoutes(
   });
 
   // Notifications - Mark as read (protected)
-  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/notifications/:id/read", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.markNotificationRead(req.params.id, userId);
@@ -404,7 +435,7 @@ export async function registerRoutes(
   });
 
   // Notifications - Mark all as read (protected)
-  app.patch("/api/notifications/read-all", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/notifications/read-all", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.markAllNotificationsRead(userId);
@@ -415,7 +446,7 @@ export async function registerRoutes(
   });
 
   // Leaderboard
-  app.get("/api/leaderboard", async (req, res) => {
+  app.get("/api/leaderboard", readLimiter, async (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const leaderboard = await storage.getLeaderboard(limit);
@@ -426,7 +457,7 @@ export async function registerRoutes(
   });
 
   // Badges - Get all badges
-  app.get("/api/badges", async (_req, res) => {
+  app.get("/api/badges", readLimiter, async (_req, res) => {
     try {
       const badgesList = await storage.getBadges();
       res.json(badgesList);
@@ -436,7 +467,7 @@ export async function registerRoutes(
   });
 
   // Badges - Get user badges
-  app.get("/api/users/:userId/badges", async (req, res) => {
+  app.get("/api/users/:userId/badges", readLimiter, async (req, res) => {
     try {
       const userBadgesList = await storage.getUserBadges(req.params.userId);
       res.json(userBadgesList);
@@ -446,7 +477,7 @@ export async function registerRoutes(
   });
 
   // Gamification summary for current user
-  app.get("/api/gamification/summary", isAuthenticated, async (req: any, res) => {
+  app.get("/api/gamification/summary", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const [profile, userBadgesList] = await Promise.all([
@@ -464,7 +495,7 @@ export async function registerRoutes(
   });
 
   // Contests - Get active contest
-  app.get("/api/contests/active", async (_req, res) => {
+  app.get("/api/contests/active", readLimiter, async (_req, res) => {
     try {
       const contest = await storage.getActiveContest();
       res.json(contest || null);
@@ -474,7 +505,7 @@ export async function registerRoutes(
   });
 
   // Contests - Get all contests
-  app.get("/api/contests", async (_req, res) => {
+  app.get("/api/contests", readLimiter, async (_req, res) => {
     try {
       const contestsList = await storage.getContests();
       res.json(contestsList);
@@ -484,7 +515,7 @@ export async function registerRoutes(
   });
 
   // Contests - Get contest entries
-  app.get("/api/contests/:contestId/entries", async (req, res) => {
+  app.get("/api/contests/:contestId/entries", readLimiter, async (req, res) => {
     try {
       const entries = await storage.getContestEntries(req.params.contestId);
       res.json(entries);
@@ -494,7 +525,7 @@ export async function registerRoutes(
   });
 
   // Contests - Submit entry (protected)
-  app.post("/api/contests/:contestId/entries", isAuthenticated, async (req: any, res) => {
+  app.post("/api/contests/:contestId/entries", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const contestId = req.params.contestId;
@@ -508,7 +539,7 @@ export async function registerRoutes(
   });
 
   // Contests - Delete entry (protected)
-  app.delete("/api/contests/entries/:entryId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/contests/entries/:entryId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const entryId = req.params.entryId;
@@ -523,7 +554,7 @@ export async function registerRoutes(
   });
 
   // Contests - Vote for entry (protected)
-  app.post("/api/contests/entries/:entryId/vote", isAuthenticated, async (req: any, res) => {
+  app.post("/api/contests/entries/:entryId/vote", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const voterId = req.user.claims.sub;
       const entryId = req.params.entryId;
@@ -535,7 +566,7 @@ export async function registerRoutes(
   });
 
   // Check if user has voted for entry
-  app.get("/api/contests/entries/:entryId/vote/status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/contests/entries/:entryId/vote/status", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const voterId = req.user.claims.sub;
       const hasVoted = await storage.hasVotedForEntry(req.params.entryId, voterId);
@@ -546,7 +577,7 @@ export async function registerRoutes(
   });
 
   // Profile Preferences - Get
-  app.get("/api/profile/:userId/preferences", async (req, res) => {
+  app.get("/api/profile/:userId/preferences", readLimiter, async (req, res) => {
     try {
       const prefs = await storage.getProfilePreferences(req.params.userId);
       res.json(prefs || null);
@@ -556,7 +587,7 @@ export async function registerRoutes(
   });
 
   // Profile Preferences - Update (protected)
-  app.put("/api/profile/preferences", isAuthenticated, async (req: any, res) => {
+  app.put("/api/profile/preferences", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const prefs = await storage.upsertProfilePreferences({ ...req.body, userId });
@@ -567,7 +598,7 @@ export async function registerRoutes(
   });
 
   // Social Links - Get
-  app.get("/api/profile/:userId/social-links", async (req, res) => {
+  app.get("/api/profile/:userId/social-links", readLimiter, async (req, res) => {
     try {
       const links = await storage.getSocialLinks(req.params.userId);
       res.json(links);
@@ -577,7 +608,7 @@ export async function registerRoutes(
   });
 
   // Social Links - Upsert (protected)
-  app.post("/api/profile/social-links", isAuthenticated, async (req: any, res) => {
+  app.post("/api/profile/social-links", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const link = await storage.upsertSocialLink({ ...req.body, userId });
@@ -588,7 +619,7 @@ export async function registerRoutes(
   });
 
   // Social Links - Delete (protected)
-  app.delete("/api/profile/social-links/:platform", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/profile/social-links/:platform", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.deleteSocialLink(userId, req.params.platform);
@@ -599,7 +630,7 @@ export async function registerRoutes(
   });
 
   // Profile Stats - Get
-  app.get("/api/profile/:userId/stats", async (req, res) => {
+  app.get("/api/profile/:userId/stats", readLimiter, async (req, res) => {
     try {
       const stats = await storage.getProfileStats(req.params.userId);
       res.json(stats || null);
@@ -609,7 +640,7 @@ export async function registerRoutes(
   });
 
   // XP Events - Get recent for user
-  app.get("/api/profile/:userId/xp-events", async (req, res) => {
+  app.get("/api/profile/:userId/xp-events", readLimiter, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
       const events = await storage.getXpEvents(req.params.userId, limit);
@@ -620,7 +651,7 @@ export async function registerRoutes(
   });
 
   // Followers with profiles - Get followers list
-  app.get("/api/profile/:userId/followers", async (req, res) => {
+  app.get("/api/profile/:userId/followers", readLimiter, async (req, res) => {
     try {
       const followersWithProfiles = await storage.getFollowersWithProfiles(req.params.userId);
       res.json(followersWithProfiles);
@@ -630,7 +661,7 @@ export async function registerRoutes(
   });
 
   // Following with profiles - Get following list
-  app.get("/api/profile/:userId/following", async (req, res) => {
+  app.get("/api/profile/:userId/following", readLimiter, async (req, res) => {
     try {
       const followingWithProfiles = await storage.getFollowingWithProfiles(req.params.userId);
       res.json(followingWithProfiles);
@@ -640,7 +671,7 @@ export async function registerRoutes(
   });
 
   // Profile Overview - Aggregated data for profile page
-  app.get("/api/profile/:userId/overview", async (req, res) => {
+  app.get("/api/profile/:userId/overview", readLimiter, async (req, res) => {
     try {
       const userId = req.params.userId;
       const [profile, memesList, counts, userBadgesList, socialLinksList, stats] = await Promise.all([
@@ -668,7 +699,7 @@ export async function registerRoutes(
   });
 
   // Favorites endpoints
-  app.post("/api/favorites/:memeId", isAuthenticated, async (req: any, res) => {
+  app.post("/api/favorites/:memeId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const memeId = req.params.memeId;
@@ -679,7 +710,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/favorites/:memeId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/favorites/:memeId", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.removeFavorite(userId, req.params.memeId);
@@ -689,7 +720,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/favorites", isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const favorites = await storage.getFavorites(userId);
@@ -702,7 +733,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/favorites/:memeId/check", isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites/:memeId/check", isAuthenticated, readLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const hasFavorited = await storage.hasFavorited(userId, req.params.memeId);
@@ -713,7 +744,7 @@ export async function registerRoutes(
   });
 
   // Profile customization endpoints
-  app.patch("/api/profile/frame", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/profile/frame", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { frame } = req.body;
@@ -727,7 +758,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/profile/color", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/profile/color", isAuthenticated, apiLimiter, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { color } = req.body;
@@ -739,16 +770,16 @@ export async function registerRoutes(
   });
 
   // Creator of Month
-  app.get("/api/creator-of-month", async (_req, res) => {
+  app.get("/api/creator-of-month", readLimiter, async (_req, res) => {
     try {
       const creator = await storage.getCreatorOfMonth();
       if (!creator) {
         return res.json(null);
       }
-      const userData = await storage.getUser(creator.userId);
+      const userData = await storage.getProfile(creator.userId);
       res.json({
         ...creator,
-        username: userData?.username || creator.userId,
+        username: userData?.displayName || userData?.userId || creator.userId,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch creator of month" });
@@ -756,7 +787,7 @@ export async function registerRoutes(
   });
 
   // Verified users
-  app.get("/api/verified-users", async (_req, res) => {
+  app.get("/api/verified-users", readLimiter, async (_req, res) => {
     try {
       const users = await storage.getVerifiedUsers();
       res.json(users);
@@ -765,55 +796,16 @@ export async function registerRoutes(
     }
   });
 
-  // File upload endpoint
-  app.post("/api/upload", isAuthenticated, async (req: any, res) => {
+  // File upload endpoint (refactored with multer config)
+  app.post("/api/upload", isAuthenticated, uploadLimiter, upload.single("file"), async (req: any, res, next) => {
     try {
-      const multer = (await import("multer")).default;
-      const path = await import("path");
-      const fs = await import("fs");
-      
-      const uploadDir = path.default.join(process.cwd(), "uploads");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
       }
-      
-      const storage_config = multer.diskStorage({
-        destination: (_req: any, _file: any, cb: any) => {
-          cb(null, uploadDir);
-        },
-        filename: (_req: any, file: any, cb: any) => {
-          const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-          const ext = path.default.extname(file.originalname);
-          cb(null, file.fieldname + "-" + uniqueSuffix + ext);
-        },
-      });
-      
-      const upload = multer({ 
-        storage: storage_config,
-        limits: { fileSize: 50 * 1024 * 1024 },
-        fileFilter: (_req: any, file: any, cb: any) => {
-          const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|webm|mov/;
-          const extname = allowedTypes.test(path.default.extname(file.originalname).toLowerCase());
-          const mimetype = allowedTypes.test(file.mimetype);
-          if (extname && mimetype) {
-            return cb(null, true);
-          }
-          cb(new Error("Invalid file type"));
-        },
-      }).single("file");
-      
-      upload(req, res, (err: any) => {
-        if (err) {
-          return res.status(400).json({ error: err.message || "Upload failed" });
-        }
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl });
-      });
+      const fileUrl = `/uploads/${req.file.filename}`;
+      res.json({ url: fileUrl });
     } catch (error) {
-      res.status(500).json({ error: "Failed to upload file" });
+      next(error);
     }
   });
 
