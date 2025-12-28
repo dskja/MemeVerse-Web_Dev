@@ -166,7 +166,7 @@ export function NotificationsDropdown() {
                     <div
                       key={notification.id}
                       className={`flex items-start gap-3 p-4 border-b last:border-0 transition-colors hover:bg-muted/50 ${
-                        !notification.read ? "bg-primary/5" : ""
+                        !notification.isRead ? "bg-primary/5" : ""
                       }`}
                       data-testid={`notification-${notification.id}`}
                     >
@@ -174,14 +174,14 @@ export function NotificationsDropdown() {
                         <Icon className={`h-5 w-5 ${iconData.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-relaxed ${!notification.read ? "font-medium" : ""}`}>
-                          {notification.message}
+                        <p className={`text-sm leading-relaxed ${!notification.isRead ? "font-medium" : ""}`}>
+                          {notification.content}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <p className="text-xs text-muted-foreground">
                             {notification.createdAt && formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale })}
                           </p>
-                          {!notification.read && (
+                          {!notification.isRead && (
                             <span className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>

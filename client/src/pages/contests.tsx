@@ -44,8 +44,8 @@ export default function Contests() {
   });
 
   const submitEntryMutation = useMutation({
-    mutationFn: async (memeId: string) => {
-      return apiRequest("POST", `/api/contests/${activeContest?.id}/entries`, { memeId });
+    mutationFn: async (editId: string) => {
+      return apiRequest("POST", `/api/contests/${activeContest?.id}/entries`, { editId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contests", activeContest?.id, "entries"] });
@@ -122,7 +122,7 @@ export default function Contests() {
                     </div>
                     <Badge className="gap-1 text-sm" variant="default">
                       <Clock className="h-4 w-4" />
-                      {t.contests.endsIn} {activeContest.endsAt && formatDistanceToNow(new Date(activeContest.endsAt))}
+                      {t.contests.endsIn} {activeContest.endDate && formatDistanceToNow(new Date(activeContest.endDate))}
                     </Badge>
                   </div>
                   {activeContest.theme && (
@@ -271,9 +271,9 @@ function ContestEntryCard({
   t: any;
 }) {
   const { data: meme } = useQuery<Meme>({
-    queryKey: ["/api/memes", entry.memeId],
+    queryKey: ["/api/memes", entry.editId],
     queryFn: async () => {
-      const res = await fetch(`/api/memes/${entry.memeId}`);
+      const res = await fetch(`/api/memes/${entry.editId}`);
       return res.json();
     },
   });

@@ -8,7 +8,7 @@ import { readLimiter, apiLimiter, uploadLimiter } from "./middleware/rate-limite
 import sanitizeHtml from "sanitize-html";
 import { parsePaginationParams, createPaginatedResponse } from "./utils/pagination";
 import { validateFileType, optimizeImage, isImage } from "./utils/image-optimizer";
-import { XP_REWARDS, PROFILE_FRAMES, type ProfileFrame, USER_LEVELS, type UserLevel } from "./storage/models";
+import { XP_REWARDS, PROFILE_FRAMES, type ProfileFrame, USER_LEVELS, type UserLevel, THEMES } from "./storage/models";
 import fs from "fs";
 import path from "path";
 
@@ -36,10 +36,10 @@ const insertUserProfileSchema = z.object({
   xp: z.number().optional(),
   level: z.enum(USER_LEVELS).optional(),
   isVerified: z.boolean().optional(),
-  profileFrame: z.string().optional(),
+  profileFrame: z.enum(PROFILE_FRAMES).optional(),
   profileColor: z.string().optional(),
   isCreatorOfMonth: z.boolean().optional(),
-  theme: z.string().optional(),
+  theme: z.enum(THEMES).optional(),
 });
 
 export async function registerRoutes(
